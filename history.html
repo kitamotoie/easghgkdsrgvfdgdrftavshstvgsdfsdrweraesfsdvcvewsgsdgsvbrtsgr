@@ -16,16 +16,26 @@ const code = params.get("code");
 document.getElementById("title").textContent = "—š—ð " + code;
 
 fetch("’èŽžÝŒÉ.csv")
-.then(r => r.text())
+.then(r => {
+    console.log("status", r.status);
+    return r.text();
+})
 .then(text => {
+
+    console.log("CSV length", text.length);
 
     const lines = text.split("\n");
 
     const filtered = lines.filter(line => line.includes("," + code + ","));
 
+    console.log("filtered", filtered);
+
     document.getElementById("result").textContent =
         filtered.join("\n");
 
+})
+.catch(err => {
+    console.log("fetch error", err);
 });
 
 </script>
