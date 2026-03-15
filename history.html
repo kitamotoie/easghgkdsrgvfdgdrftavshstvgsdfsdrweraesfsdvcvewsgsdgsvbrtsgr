@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="robots" content="noindex,nofollow">
 <title>履歴</title>
+
+<style>
+body{
+    font-family: monospace;
+    font-size:16px;
+}
+</style>
+
 </head>
 
 <body>
@@ -27,8 +35,20 @@ fetch(encodeURI("定時在庫.csv"))
 
     const filtered = lines.filter(line => line.includes("," + code + ","));
 
+    const formatted = filtered.map(line => {
+
+        const c = line.split(",");
+
+        const zaiko = Number(c[0]).toLocaleString().padStart(8);
+        const time  = c[2];
+        const memo  = c[5];
+
+        return `${zaiko}  ${time}  ${memo}`;
+
+    });
+
     document.getElementById("result").textContent =
-        filtered.join("\n");
+        formatted.join("\n");
 
 });
 
