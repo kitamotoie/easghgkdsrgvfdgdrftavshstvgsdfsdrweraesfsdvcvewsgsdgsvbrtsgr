@@ -1,0 +1,30 @@
+<html>
+<body>
+
+<h2 id="title"></h2>
+<pre id="result"></pre>
+
+<script>
+
+const params = new URLSearchParams(location.search);
+const code = params.get("code");
+
+document.getElementById("title").textContent = "—š—ð " + code;
+
+fetch("’èŽžÝŒÉ.csv")
+.then(r => r.text())
+.then(text => {
+
+    const lines = text.split("\n");
+
+    const filtered = lines.filter(line => line.includes("," + code + ","));
+
+    document.getElementById("result").textContent =
+        filtered.join("\n");
+
+});
+
+</script>
+
+</body>
+</html>
