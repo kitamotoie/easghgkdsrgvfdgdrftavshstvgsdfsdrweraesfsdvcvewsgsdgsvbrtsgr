@@ -10,11 +10,6 @@
 body{
     font-family: monospace;
     font-size:16px;
-    margin:20px;
-}
-
-pre{
-    white-space: pre;
 }
 </style>
 
@@ -43,6 +38,13 @@ fetch(encodeURI("定時在庫.csv"))
         .filter(line => line.includes("," + code + ","))
         .filter(line => line.split(",").length >= 6);
 
+    // 日時降順
+    filtered.sort((a,b)=>{
+        const ta = a.split(",")[2];
+        const tb = b.split(",")[2];
+        return new Date(tb) - new Date(ta);
+    });
+
     const formatted = filtered.map(line => {
 
         const c = line.split(",");
@@ -57,14 +59,6 @@ fetch(encodeURI("定時在庫.csv"))
 
     document.getElementById("result").textContent =
         formatted.join("\n");
-
-})
-.catch(err => {
-
-    document.getElementById("result").textContent =
-        "CSV読み込みエラー";
-
-    console.log(err);
 
 });
 
