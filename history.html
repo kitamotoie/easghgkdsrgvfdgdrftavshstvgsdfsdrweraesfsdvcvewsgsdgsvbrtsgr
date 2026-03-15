@@ -7,7 +7,6 @@
 <title>履歴</title>
 
 <style>
-
 body{
     font-family: monospace;
     font-size:16px;
@@ -17,7 +16,6 @@ body{
 pre{
     white-space: pre;
 }
-
 </style>
 
 </head>
@@ -35,11 +33,8 @@ const code = params.get("code");
 document.getElementById("title").textContent = "履歴 " + code;
 
 fetch(encodeURI("定時在庫.csv"))
-
 .then(r => r.arrayBuffer())
-
 .then(buf => new TextDecoder("shift-jis").decode(buf))
-
 .then(text => {
 
     const lines = text.split(/\r?\n/);
@@ -62,6 +57,14 @@ fetch(encodeURI("定時在庫.csv"))
 
     document.getElementById("result").textContent =
         formatted.join("\n");
+
+})
+.catch(err => {
+
+    document.getElementById("result").textContent =
+        "CSV読み込みエラー";
+
+    console.log(err);
 
 });
 
