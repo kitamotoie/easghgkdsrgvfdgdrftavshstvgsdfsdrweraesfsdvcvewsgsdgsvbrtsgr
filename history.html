@@ -1,15 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta charset="UTF-8">
 <meta name="robots" content="noindex,nofollow">
 <title>履歴</title>
 
 <style>
+
 body{
     font-family: monospace;
     font-size:16px;
+    margin:20px;
 }
+
+pre{
+    white-space: pre;
+}
+
 </style>
 
 </head>
@@ -27,13 +35,18 @@ const code = params.get("code");
 document.getElementById("title").textContent = "履歴 " + code;
 
 fetch(encodeURI("定時在庫.csv"))
+
 .then(r => r.arrayBuffer())
+
 .then(buf => new TextDecoder("shift-jis").decode(buf))
+
 .then(text => {
 
-    const lines = text.split("\n");
+    const lines = text.split(/\r?\n/);
 
-    const filtered = lines.filter(line => line.includes("," + code + ","));
+    const filtered = lines
+        .filter(line => line.includes("," + code + ","))
+        .filter(line => line.split(",").length >= 6);
 
     const formatted = filtered.map(line => {
 
