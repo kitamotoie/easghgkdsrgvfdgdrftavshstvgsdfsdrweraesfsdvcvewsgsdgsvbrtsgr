@@ -1,12 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-
 <meta charset="UTF-8">
 <meta name="robots" content="noindex,nofollow">
-
 <title>履歴</title>
-
 </head>
 
 <body>
@@ -32,6 +29,10 @@ fetch(encodeURI("定時在庫.csv"))
     document.getElementById("result").textContent =
         filtered.join("\n");
 
+})
+.catch(err => {
+    document.getElementById("result").textContent = "CSV読み込みエラー";
+    console.log(err);
 });
 
 </script>
