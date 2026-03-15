@@ -38,22 +38,30 @@ fetch(encodeURI("定時在庫.csv"))
         .filter(line => line.includes("," + code + ","))
         .filter(line => line.split(",").length >= 6);
 
-    // 日時降順
+    // 日付降順
     filtered.sort((a,b)=>{
         const ta = a.split(",")[2];
         const tb = b.split(",")[2];
         return new Date(tb) - new Date(ta);
     });
 
+    const w = ["日","月","火","水","木","金","土"];
+
     const formatted = filtered.map(line => {
 
         const c = line.split(",");
 
         const zaiko = Number(c[0]).toLocaleString().padStart(8);
-        const time  = c[2];
-        const memo  = c[5];
 
-        return `${zaiko}  ${time}  ${memo}`;
+        const d = new Date(c[2]);
+
+        const date =
+            `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}(${w[d.getDay()]}) ` +
+            `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+
+        const memo = c[5];
+
+        return `${zaiko}  ${date}  ${memo}`;
 
     });
 
