@@ -1,6 +1,12 @@
+ï»¿<!DOCTYPE html>
 <html>
 <head>
+
 <meta charset="UTF-8">
+<meta name="robots" content="noindex,nofollow">
+
+<title>å±¥æ­´</title>
+
 </head>
 
 <body>
@@ -13,29 +19,19 @@
 const params = new URLSearchParams(location.search);
 const code = params.get("code");
 
-document.getElementById("title").textContent = "—š—ð " + code;
+document.getElementById("title").textContent = "å±¥æ­´ " + code;
 
-fetch("’èŽžÝŒÉ.csv")
-.then(r => {
-    console.log("status", r.status);
-    return r.text();
-})
+fetch(encodeURI("å®šæ™‚åœ¨åº«.csv"))
+.then(r => r.text())
 .then(text => {
-
-    console.log("CSV length", text.length);
 
     const lines = text.split("\n");
 
     const filtered = lines.filter(line => line.includes("," + code + ","));
 
-    console.log("filtered", filtered);
-
     document.getElementById("result").textContent =
         filtered.join("\n");
 
-})
-.catch(err => {
-    console.log("fetch error", err);
 });
 
 </script>
