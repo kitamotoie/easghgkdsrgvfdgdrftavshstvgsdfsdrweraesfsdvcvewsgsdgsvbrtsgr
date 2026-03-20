@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<meta name="robots" content="noindex,nofollow">
+<title>履歴</title>
+
+<style>
+body{
+    font-family: monospace;
+    font-size:16px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2 id="title"></h2>
+<pre id="result"></pre>
+
+<script>
+
+const params = new URLSearchParams(location.search);
+const code = params.get("code");
+
+document.getElementById("title").textContent = "履歴 " + code;
+
+fetch(encodeURI("楽天定時在庫.CSV"))
+.then(r => r.arrayBuffer())
+.then(buf => new TextDecoder("shift-jis").decode(buf))
+.then(text => {
+
+    const lines = text.split(/\r?\n/);
+
+    // コード一致（4列目）＋最低5列チェック
+    const filtered = lines
+        .filter(line => line.split(",")[3] === code)
+        .filter(line => line.split(",").length >= 5);
+
+    // 日付 降順（新しい順）
+    filtered.sort((a, b) => {
+        const ta = new Date(a.split(",")[2]);
+        const tb = new Date(b.split(",")[2]);
+        return tb - ta;
+    });
+
+    const w = ["日","月","火","水","木","金","土"];
+
+    const formatted = filtered.map(line => {
+
+        const c = line.split(",");
+
+        // 在庫（1列目）
+        const zaiko = Number(c[0]).toLocaleString().padStart(8);
+
+        // 日付（3列目）
+        const d = new Date(c[2]);
+
+        const date =
+            `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}(${w[d.getDay()]}) ` +
+            `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+
+        // メモ（5列目）
+        const memo = c[4];
+
+        return `${zaiko}  ${date}  ${memo}`;
+
+    });
+
+    document.getElementById("result").textContent =
+        formatted.join("\n");
+
+});
+
+</script>
+
+</body>
+</html>
