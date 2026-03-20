@@ -4,7 +4,7 @@
 
 <meta charset="UTF-8">
 <meta name="robots" content="noindex,nofollow">
-<title>楽履歴</title>
+<title>履歴</title>
 
 <style>
 body{
@@ -34,12 +34,11 @@ fetch(encodeURI("楽天定時在庫.CSV"))
 
     const lines = text.split(/\r?\n/);
 
-    // コード一致（4列目）＋最低5列チェック
     const filtered = lines
         .filter(line => line.split(",")[3] === code)
         .filter(line => line.split(",").length >= 5);
 
-    // 日付 降順（新しい順）
+    // 日付 降順
     filtered.sort((a, b) => {
         const ta = new Date(a.split(",")[2]);
         const tb = new Date(b.split(",")[2]);
@@ -55,6 +54,9 @@ fetch(encodeURI("楽天定時在庫.CSV"))
         // 在庫（1列目）
         const zaiko = Number(c[0]).toLocaleString().padStart(8);
 
+        // 2列目（銘柄）
+        const name = c[1];
+
         // 日付（3列目）
         const d = new Date(c[2]);
 
@@ -65,7 +67,7 @@ fetch(encodeURI("楽天定時在庫.CSV"))
         // メモ（5列目）
         const memo = c[4];
 
-        return `${zaiko}  ${date}  ${memo}`;
+        return `${zaiko}  ${name}  ${date}  ${memo}`;
 
     });
 
