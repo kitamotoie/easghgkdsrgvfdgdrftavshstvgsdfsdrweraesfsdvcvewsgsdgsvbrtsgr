@@ -1,21 +1,31 @@
-﻿
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>カブコム在庫照会</title>
     <style>
-        /* 列を揃えるために等幅フォントを指定 */
+        /* ズレを防ぐためのフォント設定 */
         pre {
-            font-family: 'Courier New', Consolas, monospace;
+            font-family: "MS Gothic", "Osaka-Mono", "monospace"; /* 等幅フォントを優先 */
             line-height: 1.5;
             white-space: pre;
+            background-color: #f4f4f4;
+            padding: 15px;
+            border: 1px solid #ccc;
+        }
+        #update-time {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 10px;
         }
     </style>
 </head>
 <body>
 
-<h2 id="title"></h2>
+<h2>
+    <span id="title"></span>
+    <span id="update-time"></span>
+</h2>
 <pre id="result">読み込み中...</pre>
 
 <script>
@@ -26,20 +36,21 @@ document.getElementById("title").textContent = "銘柄コード: " + (code ? cod
 fetch("MarginBrand.csv?t=" + new Date().getTime())
     .then(r => {
         if (!r.ok) throw new Error("CSVが見つかりません");
+        const lastModified = r.headers.get("Last-Modified");
+        if (lastModified) {
+            const d = new Date(lastModified);
+            document.getElementById("update-time").textContent = 
+                `(更新: ${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")})`;
+        }
         return r.arrayBuffer(); 
     })
     .then(buf => {
         const text = new TextDecoder("shift-jis").decode(buf);
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-        
         if (lines.length === 0) return;
 
-        // 1. ヘッダーと対象行を抽出
         const header = lines[0].split(",");
-        const dataRows = lines.slice(1)
-            .map(line => line.split(","))
-            .filter(cols => cols[0] === code);
-
+        const dataRows = lines.slice(1).map(l => l.split(",")).filter(c => c[0] === code);
         const targetRows = [header, ...dataRows];
 
         if (dataRows.length === 0) {
@@ -47,22 +58,31 @@ fetch("MarginBrand.csv?t=" + new Date().getTime())
             return;
         }
 
-        // 2. 各列の最大幅を計算して揃える
-        const colWidths = header.map((_, i) => {
-            return Math.max(...targetRows.map(row => {
-                const val = row[i] || "";
-                // 全角文字を2文字分として計算（簡易版）
-                return val.split("").reduce((acc, char) => acc + (char.match(/[^\x01-\x7E]/) ? 2 : 1), 0);
-            }));
-        });
+        // 文字の表示幅を計算 (全角2, 半角1)
+        const getDisplayWidth = (str) => {
+            let width = 0;
+            for (let i = 0; i < str.length; i++) {
+                const c = str.charCodeAt(i);
+                // 半角カタカナや特殊記号を除外した簡易判定（日本語全角は2）
+                if ((c >= 0x0 && c < 0x81) || (c === 0xf8f0) || (c >= 0xff61 && c <= 0xff9f) || (c >= 0xf8f1 && c <= 0xf8f3)) {
+                    width += 1;
+                } else {
+                    width += 2;
+                }
+            }
+            return width;
+        };
 
-        // 3. パディング処理して結合
+        // 各列の最大幅を決定
+        const colWidths = header.map((_, i) => Math.max(...targetRows.map(row => getDisplayWidth(row[i] || ""))));
+
+        // 各行を整形
         const formatted = targetRows.map(row => {
             return row.map((val, i) => {
                 const s = val || "";
-                const currentLen = s.split("").reduce((acc, char) => acc + (char.match(/[^\x01-\x7E]/) ? 2 : 1), 0);
-                return s + " ".repeat(Math.max(0, colWidths[i] - currentLen));
-            }).join("  |  "); // 列の区切り
+                const padSize = colWidths[i] - getDisplayWidth(s);
+                return s + " ".repeat(padSize);
+            }).join(" | "); // 区切りを少しスリムに
         }).join("\n");
 
         document.getElementById("result").textContent = formatted;
