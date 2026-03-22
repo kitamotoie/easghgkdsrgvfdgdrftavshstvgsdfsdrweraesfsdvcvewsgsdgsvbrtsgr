@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <title>カブコム在庫照会</title>
     <style>
-        /* ズレを防ぐためのフォント設定 */
         pre {
-            font-family: "MS Gothic", "Osaka-Mono", "monospace"; /* 等幅フォントを優先 */
+            font-family: "MS Gothic", "Osaka-Mono", monospace;
             line-height: 1.5;
             white-space: pre;
             background-color: #f4f4f4;
@@ -50,11 +49,16 @@ fetch("MarginBrand.csv?t=" + new Date().getTime())
         if (lines.length === 0) return;
 
         const header = lines[0].split(",");
-        const dataRows = lines.slice(1).map(l => l.split(",")).filter(c => c[0] === code);
+        
+        // フィルタ条件: 1.銘柄コード一致 2.信用区分が「デイトレ」ではない
+        const dataRows = lines.slice(1)
+            .map(l => l.split(","))
+            .filter(c => c[0] === code && c[2] !== "デイトレ"); 
+
         const targetRows = [header, ...dataRows];
 
         if (dataRows.length === 0) {
-            document.getElementById("result").textContent = lines[0] + "\n(該当データなし)";
+            document.getElementById("result").textContent = header.join(" | ") + "\n(該当データなし ※デイトレ除く)";
             return;
         }
 
@@ -63,8 +67,7 @@ fetch("MarginBrand.csv?t=" + new Date().getTime())
             let width = 0;
             for (let i = 0; i < str.length; i++) {
                 const c = str.charCodeAt(i);
-                // 半角カタカナや特殊記号を除外した簡易判定（日本語全角は2）
-                if ((c >= 0x0 && c < 0x81) || (c === 0xf8f0) || (c >= 0xff61 && c <= 0xff9f) || (c >= 0xf8f1 && c <= 0xf8f3)) {
+                if ((c >= 0x0 && c < 0x81) || (c >= 0xff61 && c <= 0xff9f)) {
                     width += 1;
                 } else {
                     width += 2;
@@ -73,16 +76,14 @@ fetch("MarginBrand.csv?t=" + new Date().getTime())
             return width;
         };
 
-        // 各列の最大幅を決定
         const colWidths = header.map((_, i) => Math.max(...targetRows.map(row => getDisplayWidth(row[i] || ""))));
 
-        // 各行を整形
         const formatted = targetRows.map(row => {
             return row.map((val, i) => {
                 const s = val || "";
                 const padSize = colWidths[i] - getDisplayWidth(s);
                 return s + " ".repeat(padSize);
-            }).join(" | "); // 区切りを少しスリムに
+            }).join(" | ");
         }).join("\n");
 
         document.getElementById("result").textContent = formatted;
