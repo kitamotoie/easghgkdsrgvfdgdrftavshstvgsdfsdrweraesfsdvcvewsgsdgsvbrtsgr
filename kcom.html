@@ -1,24 +1,24 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ƒJƒuƒRƒ€İŒÉÆ‰ï</title>
+    <title>ã‚«ãƒ–ã‚³ãƒ åœ¨åº«ç…§ä¼š</title>
 </head>
 <body>
 
 <h2 id="title"></h2>
-<pre id="result">“Ç‚İ‚İ’†...</pre>
+<pre id="result">èª­ã¿è¾¼ã¿ä¸­...</pre>
 
 <script>
 const params = new URLSearchParams(location.search);
 const code = params.get("code");
-document.getElementById("title").textContent = "ƒR[ƒh: " + code;
+document.getElementById("title").textContent = "ã‚³ãƒ¼ãƒ‰: " + code;
 
-// ƒtƒ@ƒCƒ‹–¼‚Í Python ‚Å•Û‘¶‚µ‚Ä‚¢‚é‚à‚Ì‚É‡‚í‚¹‚Ä‚­‚¾‚³‚¢
+// ãƒ•ã‚¡ã‚¤ãƒ«åã¯ Python ã§ä¿å­˜ã—ã¦ã„ã‚‹ã‚‚ã®ã«åˆã‚ã›ã¦ãã ã•ã„
 fetch("MarginBrand.csv")
     .then(r => r.array_buffer ? r.arrayBuffer() : r.blob()) 
     .then(data => {
-        // Shift_JIS ‚ÅƒfƒR[ƒh‚µ‚Ä•¶š‰»‚¯‚ğ–h~
+        // Shift_JIS ã§ãƒ‡ã‚³ãƒ¼ãƒ‰ã—ã¦æ–‡å­—åŒ–ã‘ã‚’é˜²æ­¢
         const reader = new FileReader();
         return new Promise(resolve => {
             reader.onload = () => resolve(reader.result);
@@ -28,21 +28,21 @@ fetch("MarginBrand.csv")
     .then(text => {
         const lines = text.split(/\r?\n/);
         
-        // w’è‚µ‚½ƒR[ƒh‚ªŠÜ‚Ü‚ê‚és‚¾‚¯‚ğ’Šo
+        // æŒ‡å®šã—ãŸã‚³ãƒ¼ãƒ‰ãŒå«ã¾ã‚Œã‚‹è¡Œã ã‘ã‚’æŠ½å‡º
         const filtered = lines.filter(line => {
             const cols = line.split(",");
             return cols[0] === code; 
         });
 
         if (filtered.length === 0) {
-            document.getElementById("result").textContent = "ƒf[ƒ^‚È‚µ";
+            document.getElementById("result").textContent = "ãƒ‡ãƒ¼ã‚¿ãªã—";
         } else {
-            // ‚»‚Ì‚Ü‚ÜŒ‹‡‚µ‚Ä•\¦
+            // ãã®ã¾ã¾çµåˆã—ã¦è¡¨ç¤º
             document.getElementById("result").textContent = filtered.join("\n");
         }
     })
     .catch(e => {
-        document.getElementById("result").textContent = "ƒGƒ‰[: " + e.message;
+        document.getElementById("result").textContent = "ã‚¨ãƒ©ãƒ¼: " + e.message;
     });
 </script>
 
