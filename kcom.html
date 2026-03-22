@@ -1,14 +1,17 @@
-﻿CSVの1行目（ヘッダー行）と、指定したコードに一致する行をあわせて表示するように修正しました。
-
-これで、どの値が「在庫数」で、どの値が「プレミアム料」なのかがひと目で分かるようになります。
-
-修正版：kcom.html
-HTML
+﻿
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>カブコム在庫照会</title>
+    <style>
+        /* 列を揃えるために等幅フォントを指定 */
+        pre {
+            font-family: 'Courier New', Consolas, monospace;
+            line-height: 1.5;
+            white-space: pre;
+        }
+    </style>
 </head>
 <body>
 
@@ -26,31 +29,43 @@ fetch("MarginBrand.csv?t=" + new Date().getTime())
         return r.arrayBuffer(); 
     })
     .then(buf => {
-        // Shift_JISでデコード
         const text = new TextDecoder("shift-jis").decode(buf);
-        const lines = text.split(/\r?\n/);
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
         
-        if (lines.length === 0) {
-            document.getElementById("result").textContent = "ファイルが空です";
+        if (lines.length === 0) return;
+
+        // 1. ヘッダーと対象行を抽出
+        const header = lines[0].split(",");
+        const dataRows = lines.slice(1)
+            .map(line => line.split(","))
+            .filter(cols => cols[0] === code);
+
+        const targetRows = [header, ...dataRows];
+
+        if (dataRows.length === 0) {
+            document.getElementById("result").textContent = lines[0] + "\n(該当データなし)";
             return;
         }
 
-        // 1行目（列名）を取得
-        const header = lines[0];
-
-        // 指定コードと一致する行を抽出（2行目以降から検索）
-        const filtered = lines.slice(1).filter(line => {
-            const cols = line.split(",");
-            return cols[0] === code; 
+        // 2. 各列の最大幅を計算して揃える
+        const colWidths = header.map((_, i) => {
+            return Math.max(...targetRows.map(row => {
+                const val = row[i] || "";
+                // 全角文字を2文字分として計算（簡易版）
+                return val.split("").reduce((acc, char) => acc + (char.match(/[^\x01-\x7E]/) ? 2 : 1), 0);
+            }));
         });
 
-        if (filtered.length === 0) {
-            // 該当データがなくてもヘッダーだけは出す
-            document.getElementById("result").textContent = header + "\n(該当データなし)";
-        } else {
-            // ヘッダーと抽出結果を結合して表示
-            document.getElementById("result").textContent = header + "\n" + filtered.join("\n");
-        }
+        // 3. パディング処理して結合
+        const formatted = targetRows.map(row => {
+            return row.map((val, i) => {
+                const s = val || "";
+                const currentLen = s.split("").reduce((acc, char) => acc + (char.match(/[^\x01-\x7E]/) ? 2 : 1), 0);
+                return s + " ".repeat(Math.max(0, colWidths[i] - currentLen));
+            }).join("  |  "); // 列の区切り
+        }).join("\n");
+
+        document.getElementById("result").textContent = formatted;
     })
     .catch(e => {
         document.getElementById("result").textContent = "エラー: " + e.message;
