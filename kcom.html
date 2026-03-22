@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>カブコム在庫照会</title>
+</head>
+<body>
+
+<h2 id="title"></h2>
+<pre id="result">読み込み中...</pre>
+
+<script>
+const params = new URLSearchParams(location.search);
+const code = params.get("code");
+document.getElementById("title").textContent = "コード: " + code;
+
+// ファイル名は Python で保存しているものに合わせてください
+fetch("MarginBrand.csv")
+    .then(r => r.array_buffer ? r.arrayBuffer() : r.blob()) 
+    .then(data => {
+        // Shift_JIS でデコードして文字化けを防止
+        const reader = new FileReader();
+        return new Promise(resolve => {
+            reader.onload = () => resolve(reader.result);
+            reader.readAsText(new Blob([data]), "shift-jis");
+        });
+    })
+    .then(text => {
+        const lines = text.split(/\r?\n/);
+        
+        // 指定したコードが含まれる行だけを抽出
+        const filtered = lines.filter(line => {
+            const cols = line.split(",");
+            return cols[0] === code; 
+        });
+
+        if (filtered.length === 0) {
+            document.getElementById("result").textContent = "データなし";
+        } else {
+            // そのまま結合して表示
+            document.getElementById("result").textContent = filtered.join("\n");
+        }
+    })
+    .catch(e => {
+        document.getElementById("result").textContent = "エラー: " + e.message;
+    });
+</script>
+
+</body>
+</html>
