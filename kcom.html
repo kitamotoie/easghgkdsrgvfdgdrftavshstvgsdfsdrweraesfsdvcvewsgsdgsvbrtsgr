@@ -12,32 +12,28 @@
 <script>
 const params = new URLSearchParams(location.search);
 const code = params.get("code");
-document.getElementById("title").textContent = "コード: " + code;
+document.getElementById("title").textContent = "銘柄コード: " + (code ? code : "未指定");
 
-// ファイル名は Python で保存しているものに合わせてください
-fetch("MarginBrand.csv")
-    .then(r => r.array_buffer ? r.arrayBuffer() : r.blob()) 
-    .then(data => {
-        // Shift_JIS でデコードして文字化けを防止
-        const reader = new FileReader();
-        return new Promise(resolve => {
-            reader.onload = () => resolve(reader.result);
-            reader.readAsText(new Blob([data]), "shift-jis");
-        });
+fetch("MarginBrand.csv?t=" + new Date().getTime())
+    .then(r => {
+        if (!r.ok) throw new Error("CSVが見つかりません");
+        return r.arrayBuffer(); 
     })
-    .then(text => {
+    .then(buf => {
+        // Shift_JISでデコード（文字化け対策）
+        const text = new TextDecoder("shift-jis").decode(buf);
         const lines = text.split(/\r?\n/);
         
-        // 指定したコードが含まれる行だけを抽出
+        // 1列目が指定コードと完全一致する行だけを抽出
         const filtered = lines.filter(line => {
             const cols = line.split(",");
             return cols[0] === code; 
         });
 
         if (filtered.length === 0) {
-            document.getElementById("result").textContent = "データなし";
+            document.getElementById("result").textContent = "該当データなし";
         } else {
-            // そのまま結合して表示
+            // フィルタリングされた行を改行でつなげて、加工せずそのまま出す
             document.getElementById("result").textContent = filtered.join("\n");
         }
     })
