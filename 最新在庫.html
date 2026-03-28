@@ -35,9 +35,12 @@
 <div id="output">読み込み中...</div>
 
 <script>
+// 自分データ等の汎用カンマ付け（在庫以外に使用）
 const fmt = (val) => {
     if (val === undefined || val === null || String(val).trim() === "") return "";
-    const n = parseFloat(String(val).replace(/,/g, ''));
+    const cleanVal = String(val).replace(/,/g, '');
+    const n = parseFloat(cleanVal);
+    // 数値ならカンマ付け、数値でなければ（「抽選中」など）そのまま返す
     return isNaN(n) ? val : n.toLocaleString();
 };
 
@@ -82,12 +85,13 @@ async function loadAndMergeAll() {
         if (textE) {
             textE.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                // 1列目:コード, 3列目:長期判定, 4列目:在庫(c[3]), 5列目:プレ料(c[4])
+                // c[0]:コード, c[2]:長期, c[3]:在庫, c[4]:プレ料
                 if (c.length >= 4 && c[2] && c[2].includes("長期")) {
                     const id = getID(c[0]);
                     if (id) {
+                        // 在庫(s)はカンマを消す。プレ料(p)はそのまま。
                         esmaMap[id] = {
-                            s: c[3] ? c[3].trim() : "0", 
+                            s: c[3] ? c[3].trim().replace(/,/g, '') : "0", 
                             p: c[4] ? c[4].trim() : ""
                         };
                     }
@@ -118,7 +122,8 @@ async function loadAndMergeAll() {
                 
                 let esmaStr = " ".repeat(19);
                 if (eData) {
-                    const sDisp = fmt(eData.s);
+                    // Eスマ在庫はカンマなしで表示
+                    const sDisp = eData.s; 
                     const pDisp = eData.p || "";
                     esmaStr = `E長:${sDisp.padStart(7)} P:${pDisp.padStart(4)} `;
                 }
