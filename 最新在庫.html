@@ -33,8 +33,8 @@
         <a href="https://gokigen-life.tokyo/calendar/" target="_blank">ごきカレ</a>
     </div>
     <div class="update-info">
+        <span id="time-my">自分: --/-- --:--</span>
         <span id="time-rakuten">楽天データ: --/-- --:--</span>
-        <span id="time-status">状態: 準備中</span>
     </div>
 </header>
 
@@ -44,6 +44,12 @@
 function extractRakutenDate(text) {
     const m = text.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
     return m ? `${m[2]}/${m[3]} ${m[4]}:${m[5]}` : "不明";
+}
+
+function formatFileDate(lastModified) {
+    if (!lastModified) return "--/-- --:--";
+    const d = new Date(lastModified);
+    return `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
 }
 
 async function loadAndMergeAll() {
@@ -63,7 +69,8 @@ async function loadAndMergeAll() {
                 const c = line.split(',');
                 if (c.length > 1) {
                     const m = c[1].trim().match(/^\d{4}/);
-                    if (m) rakutenMap[m[0]] = c[0].trim();
+                    // 楽天在庫はカンマを消した生の値を格納
+                    if (m) rakutenMap[m[0]] = c[0].trim().replace(/,/g, '');
                 }
             });
         }
@@ -74,7 +81,6 @@ async function loadAndMergeAll() {
             text.trim().split('\n').forEach(line => {
                 const c = line.split(',');
                 if (c.length > 6 && c[2].trim() === "長期") {
-                    // c[0]=コード, c[4]=在庫数, c[6]=プレミアム料
                     esmaMap[c[0].trim()] = { 
                         s: c[4].trim() || "0", 
                         p: c[6].trim() || "0" 
@@ -84,6 +90,7 @@ async function loadAndMergeAll() {
         }
 
         if (resM.ok) {
+            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resM.headers.get('Last-Modified'));
             const textMy = await resM.text();
             const lines = textMy.trim().split('\n');
             const outputDiv = document.getElementById('output');
@@ -101,9 +108,10 @@ async function loadAndMergeAll() {
                 const r = rakutenMap[id];
                 const e = esmaMap[id];
 
-                const rakutenText = r !== undefined ? `楽:${fmt(r).padStart(6)} ` : "".padStart(10);
+                // 楽天：カンマなしで表示
+                const rakutenText = r !== undefined ? `楽:${r.padStart(6)} ` : "".padStart(10);
                 
-                // Eスマ表示（P:0の場合は空欄にせず0表示、データ自体がない場合のみ空白）
+                // Eスマ：在庫はカンマあり、プレ料はそのまま
                 const esmaText = e ? `E長:${fmt(e.s).padStart(7)} P:${e.p.padStart(4)} ` : "".padStart(19);
 
                 const row = document.createElement('div');
@@ -125,7 +133,6 @@ async function loadAndMergeAll() {
 
                 outputDiv.appendChild(row);
             });
-            document.getElementById('time-status').textContent = '状態: 照合完了';
         }
     } catch (err) {
         document.getElementById('output').textContent = 'エラー: ' + err.message;
