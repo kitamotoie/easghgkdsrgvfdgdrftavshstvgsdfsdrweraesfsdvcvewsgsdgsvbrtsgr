@@ -13,27 +13,14 @@
             position: sticky; top: 0; z-index: 100; line-height: 1.6;
         }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
-        
-        /* 更新情報エリア */
         .update-info { font-size: 11px; color: #555; display: block; margin-top: 5px; font-weight: bold; }
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
-
         #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
-        
-        .row { 
-            display: block; 
-            border-bottom: 1px solid #eee; 
-            padding: 2px 0;
-            color: #333;
-        }
+        .row { display: block; border-bottom: 1px solid #eee; padding: 2px 0; color: #333; }
         .row:hover { background-color: #eef6ff; }
-        
-        /* リンクを単純なテキストに */
         .links a { color: #0077cc; text-decoration: none; margin-right: 8px; }
         .links a:hover { text-decoration: underline; background-color: #fffae6; }
-
-        /* ズレ防止用の固定幅インラインブロック */
-        .fixed-box { display: inline-block; white-space: pre; }
+        .fixed-box { display: inline-block; white-space: pre; vertical-align: top; }
     </style>
 </head>
 <body>
@@ -52,30 +39,32 @@
     </div>
 </header>
 
-<div id="output">全データを照合中...</div>
+<div id="output">読み込み中...</div>
 
 <script>
+// サーバー上のファイル更新日時（Last-Modified）を整形する関数
 function formatFileDate(lastModified) {
     if (!lastModified) return "--/-- --:--";
     const d = new Date(lastModified);
-    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
     const date = d.getDate().toString().padStart(2, '0');
-    const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    return `${month}/${date} ${hours}:${minutes}`;
+    const h = d.getHours().toString().padStart(2, '0');
+    const min = d.getMinutes().toString().padStart(2, '0');
+    return `${m}/${date} ${h}:${min}`;
 }
 
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
         
-        // 各CSVの読み込み
+        // 3つのファイルを並列で同時読み込み
         const [resR, resE, resM] = await Promise.all([
             fetch('楽天定時在庫.CSV?' + ts).catch(() => ({ok:false})),
             fetch('MarginBrand.csv?' + ts).catch(() => ({ok:false})),
-            fetch('最新在庫_data.csv?' + ts)
+            fetch('最新在庫_data.csv?' + ts).catch(() => ({ok:false}))
         ]);
 
+        // --- 1. 楽天データの処理 ---
         const rakutenMap = {};
         if (resR.ok) {
             document.getElementById('time-rakuten').textContent = '楽天: ' + formatFileDate(resR.headers.get('Last-Modified'));
@@ -89,6 +78,7 @@ async function loadAndMergeAll() {
             });
         }
 
+        // --- 2. Eスマデータの処理 ---
         const esmaMap = {};
         if (resE.ok) {
             document.getElementById('time-esma').textContent = 'Eスマ: ' + formatFileDate(resE.headers.get('Last-Modified'));
@@ -99,6 +89,7 @@ async function loadAndMergeAll() {
             });
         }
 
+        // --- 3. メイン（自分）データの表示 ---
         if (resM.ok) {
             document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resM.headers.get('Last-Modified'));
             const textMy = await resM.text();
@@ -115,15 +106,12 @@ async function loadAndMergeAll() {
                 const c = line.split(','); 
                 if (c.length < 7) return;
                 const id = c[6].trim();
-                
                 const r = rakutenMap[id];
                 const e = esmaMap[id];
 
-                // 楽天情報の文字列（データなしでも幅を維持）
+                // データがない場合も空の固定幅を確保してズレを防止
                 const rakutenText = r !== undefined ? `楽:${fmt(r).padStart(6)} ` : "".padStart(10);
-                
-                // Eスマ情報の文字列（データなしでも幅を維持）
-                const esmaText = e ? `E長:${fmt(e.s).padStart(6)} P:${e.p.padStart(3)} ` : "".padStart(18);
+                const esmaText = e ? `E長:${fmt(e.s).padStart(6)} P:${e.p.padStart(4)} ` : "".padStart(18);
 
                 const row = document.createElement('div');
                 row.className = 'row';
@@ -131,7 +119,7 @@ async function loadAndMergeAll() {
                     `<span class="fixed-box" style="width:460px;">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </span>` + 
                     `<span class="fixed-box" style="width:100px;">${rakutenText}</span>` + 
                     `<span class="fixed-box" style="width:150px;">${esmaText}</span>` + 
-                    `<span class="links" style="display:inline-block; width:300px;">` +
+                    `<span class="links" style="display:inline-block; width:290px;">` +
                     `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
                     `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
                     `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>` +
