@@ -56,6 +56,12 @@ const fmt = (val) => {
     return isNaN(n) ? val : n.toLocaleString();
 };
 
+// 単価用：カンマを除去してトリミングのみ行う関数
+const raw = (val) => {
+    if (val === undefined || val === null) return "";
+    return String(val).replace(/,/g, '').trim();
+};
+
 const getID = (str) => {
     if (!str) return null;
     const m = String(str).trim().match(/[0-9A-Z]{4}/);
@@ -128,8 +134,9 @@ async function loadAndMergeAll() {
 
                 const row = document.createElement('div');
                 row.className = 'row';
+                // c[4] と c[5] を fmt() から raw() に変更してカンマを抑制
                 row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </div>` + 
+                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${raw(c[4]).padStart(4)}→${raw(c[5]).padStart(5)} </div>` + 
                     `<div class="col-name" title="${c[7]}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
                         `<span class="name-text">${c[7]}</span>` +
