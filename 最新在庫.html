@@ -33,42 +33,32 @@
         <a href="https://gokigen-life.tokyo/calendar/" target="_blank">ごきカレ</a>
     </div>
     <div class="update-info">
-        <span id="time-my">自分: --/-- --:--</span>
-        <span id="time-rakuten">楽天: --/-- --:--</span>
-        <span id="time-esma">Eスマ: --/-- --:--</span>
+        <span id="time-rakuten">楽天データ: --/-- --:--</span>
+        <span id="time-status">状態: 準備中</span>
     </div>
 </header>
 
 <div id="output">読み込み中...</div>
 
 <script>
-// サーバー上のファイル更新日時（Last-Modified）を整形する関数
-function formatFileDate(lastModified) {
-    if (!lastModified) return "--/-- --:--";
-    const d = new Date(lastModified);
-    const m = (d.getMonth() + 1).toString().padStart(2, '0');
-    const date = d.getDate().toString().padStart(2, '0');
-    const h = d.getHours().toString().padStart(2, '0');
-    const min = d.getMinutes().toString().padStart(2, '0');
-    return `${m}/${date} ${h}:${min}`;
+function extractRakutenDate(text) {
+    const m = text.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+    return m ? `${m[2]}/${m[3]} ${m[4]}:${m[5]}` : "不明";
 }
 
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
-        
-        // 3つのファイルを並列で同時読み込み
         const [resR, resE, resM] = await Promise.all([
             fetch('楽天定時在庫.CSV?' + ts).catch(() => ({ok:false})),
             fetch('MarginBrand.csv?' + ts).catch(() => ({ok:false})),
             fetch('最新在庫_data.csv?' + ts).catch(() => ({ok:false}))
         ]);
 
-        // --- 1. 楽天データの処理 ---
         const rakutenMap = {};
         if (resR.ok) {
-            document.getElementById('time-rakuten').textContent = '楽天: ' + formatFileDate(resR.headers.get('Last-Modified'));
             const text = await resR.text();
+            document.getElementById('time-rakuten').textContent = '楽天データ: ' + extractRakutenDate(text);
             text.trim().split('\n').forEach(line => {
                 const c = line.split(',');
                 if (c.length > 1) {
@@ -78,20 +68,22 @@ async function loadAndMergeAll() {
             });
         }
 
-        // --- 2. Eスマデータの処理 ---
         const esmaMap = {};
         if (resE.ok) {
-            document.getElementById('time-esma').textContent = 'Eスマ: ' + formatFileDate(resE.headers.get('Last-Modified'));
             const text = await resE.text();
             text.trim().split('\n').forEach(line => {
                 const c = line.split(',');
-                if (c[2] === "長期") esmaMap[c[0]] = { s: c[4] || "0", p: c[5] || "0" };
+                if (c.length > 6 && c[2].trim() === "長期") {
+                    // c[0]=コード, c[4]=在庫数, c[6]=プレミアム料
+                    esmaMap[c[0].trim()] = { 
+                        s: c[4].trim() || "0", 
+                        p: c[6].trim() || "0" 
+                    };
+                }
             });
         }
 
-        // --- 3. メイン（自分）データの表示 ---
         if (resM.ok) {
-            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resM.headers.get('Last-Modified'));
             const textMy = await resM.text();
             const lines = textMy.trim().split('\n');
             const outputDiv = document.getElementById('output');
@@ -109,16 +101,17 @@ async function loadAndMergeAll() {
                 const r = rakutenMap[id];
                 const e = esmaMap[id];
 
-                // データがない場合も空の固定幅を確保してズレを防止
                 const rakutenText = r !== undefined ? `楽:${fmt(r).padStart(6)} ` : "".padStart(10);
-                const esmaText = e ? `E長:${fmt(e.s).padStart(6)} P:${e.p.padStart(4)} ` : "".padStart(18);
+                
+                // Eスマ表示（P:0の場合は空欄にせず0表示、データ自体がない場合のみ空白）
+                const esmaText = e ? `E長:${fmt(e.s).padStart(7)} P:${e.p.padStart(4)} ` : "".padStart(19);
 
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
                     `<span class="fixed-box" style="width:460px;">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </span>` + 
                     `<span class="fixed-box" style="width:100px;">${rakutenText}</span>` + 
-                    `<span class="fixed-box" style="width:150px;">${esmaText}</span>` + 
+                    `<span class="fixed-box" style="width:160px;">${esmaText}</span>` + 
                     `<span class="links" style="display:inline-block; width:290px;">` +
                     `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
                     `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
@@ -132,6 +125,7 @@ async function loadAndMergeAll() {
 
                 outputDiv.appendChild(row);
             });
+            document.getElementById('time-status').textContent = '状態: 照合完了';
         }
     } catch (err) {
         document.getElementById('output').textContent = 'エラー: ' + err.message;
