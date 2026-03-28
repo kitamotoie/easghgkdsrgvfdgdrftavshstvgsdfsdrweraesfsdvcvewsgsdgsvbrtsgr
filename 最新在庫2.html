@@ -1,53 +1,25 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: monospace; font-size:16px; margin:0; background: #fff; }
-        header { background-color: #f8f8f8; padding: 5px 10px; border-bottom: 1px solid #ccc; }
-        header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; }
-        /* 1行を崩さず、はみ出たら横スクロール */
-        #output { white-space: pre; padding: 10px; line-height: 1.4; overflow-x: auto; }
-        .row { display: block; border-bottom: 1px solid #f0f0f0; }
-        a { color: #0077cc; text-decoration: none; margin-right: 8px; }
-        a:hover { background: #fffae6; text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <header>
-        <a href="https://..." target="_blank">ひチェック</a>
-        <a href="https://..." target="_blank">まチェック</a>
-        <span id="update-time" style="font-size:12px; color:gray;"></span>
-    </header>
-
-    <div id="output">読み込み中...</div>
-
-    <script>
-        async function loadAndBuild() {
-            // キャッシュ防止のため時刻を付与してCSVを読み込み
-            const res = await fetch('最新在庫_data.csv?' + new Date().getTime());
-            const text = await res.text();
-            const lines = text.trim().split('\n');
-            const outputDiv = document.getElementById('output');
-            outputDiv.innerHTML = '';
-
-            lines.forEach(line => {
+lines.forEach(line => {
                 const c = line.split(','); 
-                // c[0]:在庫, c[1]:株価, c[2]:希望, c[3]:評価額, c[4]:単価(@), c[5]:コスト(→), c[6]:ID, c[7]:名称
                 if(c.length < 7) return;
 
-                const id = c[6]; // IDを変数に入れて使いやすくします
+                const id = c[6];
+                
+                // 数値に変換してカンマ区切りにする関数
+                const fmt = (val) => {
+                    const num = Number(val);
+                    return isNaN(num) ? val : num.toLocaleString();
+                };
+
                 const row = document.createElement('span');
                 row.className = 'row';
 
-                // 全リンクを組み立て
+                // 各項目に fmt() を適用してカンマをつける
                 row.innerHTML = 
                     `${c[0].padStart(7)}株 ` +
-                    `${c[1].padStart(7)} ` +
-                    `${c[2].padStart(5)} ` +
-                    `${c[3].padStart(10)} ` +
-                    `@${c[4].padStart(4)}→${c[5].padStart(5)} ` +
-                    // --- ここから全リンク ---
+                    `${fmt(c[1]).padStart(7)} ` +        // 株価にカンマ
+                    `${c[2].padStart(5)} ` +             // 希望数
+                    `${fmt(c[3]).padStart(10)} ` +       // 評価額にカンマ
+                    `@${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} ` + // 単価とコストにカンマ
                     `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank' rel='noreferrer'>${id}</a> ` +
                     `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel='noreferrer'>ｺｽﾄ</a> ` +
                     `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel='noreferrer'>Go</a> ` +
@@ -55,14 +27,7 @@
                     `<a href='history-raku.html?code=${id}' target='_blank'>楽</a> ` +
                     `<a href='kcom.html?code=${id}' target='_blank'>kcom</a> ` +
                     `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a> ` +
-                    // --- ここまで全リンク ---
-                    `${c[7]}`; // 銘柄名
+                    `${c[7]}`;
 
                 outputDiv.appendChild(row);
             });
-            document.getElementById('update-time').textContent = ' 更新: ' + new Date().toLocaleString();
-        }
-        loadAndBuild();
-    </script>
-</body>
-</html>
