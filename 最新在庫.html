@@ -11,17 +11,22 @@
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
         #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
         
-        /* レイアウト用のスタイル */
         .row { display: flex; border-bottom: 1px solid #eee; padding: 2px 0; align-items: center; }
         .row:hover { background-color: #eef6ff; }
         
+        /* 列ごとの幅設定 */
         .col-main { width: 460px; flex-shrink: 0; }
-        .col-links { width: 290px; flex-shrink: 0; }
-        .col-name { width: 350px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        .col-stock { width: 300px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 5px; } /* 楽天・Eスマ用 */
+        .col-name { width: 400px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 15px; }
+        .col-links { width: 220px; flex-shrink: 0; }
+        .col-stock { width: 300px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 8px; font-weight: bold; }
 
-        .links a { color: #0077cc; text-decoration: none; margin-right: 8px; }
+        .links a { color: #0077cc; text-decoration: none; margin-right: 6px; font-size: 13px; }
         .links a:hover { text-decoration: underline; background-color: #fffae6; }
+        
+        /* 銘柄名のコード部分のリンクスタイル */
+        .code-link { color: #0077cc; text-decoration: none; font-weight: bold; margin-right: 5px; border-bottom: 1px solid #ddd; }
+        .code-link:hover { background-color: #fffae6; border-bottom: 1px solid #0077cc; }
+        .name-text { color: #000; }
     </style>
 </head>
 <body>
@@ -121,28 +126,28 @@ async function loadAndMergeAll() {
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
 
-                // 在庫情報の組み立て
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
                 let esmaStr = " ".repeat(19);
                 if (eData) {
                     esmaStr = `E長:${eData.s.padStart(7)} P:${(eData.p || "").padStart(4)} `;
                 }
 
-                // 行の作成
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
                     `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </div>` + 
+                    `<div class="col-name" title="${c[7]}">` +
+                        `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" class="code-link">${id}</a>` +
+                        `<span class="name-text">${c[7]}</span>` +
+                    `</div>` + 
                     `<div class="col-links links">` +
-                    `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
-                    `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
-                    `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>` +
-                    `<a href='history.html?code=${id}' target='_blank'>歴</a>` +
-                    `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
-                    `<a href='kcom.html?code=${id}' target='_blank'>kcom</a>` +
-                    `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>` +
+                        `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
+                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>` +
+                        `<a href='history.html?code=${id}' target='_blank'>歴</a>` +
+                        `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
+                        `<a href='kcom.html?code=${id}' target='_blank'>kcom</a>` +
+                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>` +
                     `</div>` +
-                    `<div class="col-name" title="${c[7]}">${c[7]}</div>` + 
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>`;
 
                 outputDiv.appendChild(row);
