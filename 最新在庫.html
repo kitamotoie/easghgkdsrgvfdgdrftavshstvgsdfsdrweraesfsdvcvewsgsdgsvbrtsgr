@@ -21,6 +21,8 @@
         .links a { color: #0077cc; text-decoration: none; margin-right: 8px; }
         .links a:hover { text-decoration: underline; background-color: #fffae6; }
         .fixed-box { display: inline-block; white-space: pre; vertical-align: top; }
+        /* Eスマ用の色（少し変えて見やすく） */
+        .esma-label { color: #e67e22; } 
     </style>
 </head>
 <body>
@@ -67,9 +69,9 @@ async function loadAndMergeAll() {
             document.getElementById('time-rakuten').textContent = '楽天データ: ' + extractRakutenDate(text);
             text.split('\n').forEach(line => {
                 const c = line.split(',');
-                if (c.length > 1) {
-                    const code = c[1].trim();
-                    if (code) rakutenMap[code] = c[0].trim().replace(/,/g, '');
+                if (c.length >= 2) {
+                    const codeMatch = c[1].trim().match(/[0-9A-Z]{4}/);
+                    if (codeMatch) rakutenMap[codeMatch[0]] = c[0].trim().replace(/,/g, '');
                 }
             });
         }
@@ -79,13 +81,15 @@ async function loadAndMergeAll() {
             const text = await resE.text();
             text.split('\n').forEach(line => {
                 const c = line.split(',');
-                // 「長期」の行を判定
-                if (c.length >= 6 && c[2] && c[2].trim() === "長期") {
-                    const code = c[0].trim();
-                    esmaMap[code] = { 
-                        s: c[4] ? c[4].trim() : "0", // 5番目が在庫
-                        p: c[5] ? c[5].trim() : ""   // 6番目がプレミアム料(想定)
-                    };
+                // 「長期」という文字が含まれているか判定
+                if (c.length >= 6 && c[2] && c[2].includes("長期")) {
+                    const codeMatch = c[0].trim().match(/[0-9A-Z]{4}/);
+                    if (codeMatch) {
+                        esmaMap[codeMatch[0]] = { 
+                            s: c[4] ? c[4].trim() : "0", 
+                            p: c[5] ? c[5].trim() : " " 
+                        };
+                    }
                 }
             });
         }
@@ -105,18 +109,23 @@ async function loadAndMergeAll() {
             lines.forEach(line => {
                 const c = line.split(','); 
                 if (c.length < 7) return;
-                const id = c[6].trim();
+                
+                const idMatch = c[6].trim().match(/[0-9A-Z]{4}/);
+                if (!idMatch) return;
+                const id = idMatch[0];
 
                 const r = rakutenMap[id];
                 const e = esmaMap[id];
 
+                // 楽天表示
                 const rakutenText = r !== undefined ? `楽:${r.padStart(6)} ` : "".padStart(10);
                 
+                // Eスマ表示（データがある場合のみ E長:を表示）
                 let esmaText = "".padStart(19);
                 if (e) {
                     const stock = fmt(e.s);
-                    // プレ料が空欄なら0ではなく空で表示するか、指定があれば調整可能
-                    const prem = e.p || " "; 
+                    const prem = e.p;
+                    // ここで「E長:」という文字を出しています
                     esmaText = `E長:${stock.padStart(7)} P:${prem.padStart(4)} `;
                 }
 
