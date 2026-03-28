@@ -9,7 +9,7 @@
         /* 1行を崩さず、はみ出たら横スクロール */
         #output { white-space: pre; padding: 10px; line-height: 1.4; overflow-x: auto; }
         .row { display: block; border-bottom: 1px solid #f0f0f0; }
-        a { color: #0077cc; text-decoration: none; margin-right: 5px; }
+        a { color: #0077cc; text-decoration: none; margin-right: 8px; }
         a:hover { background: #fffae6; text-decoration: underline; }
     </style>
 </head>
@@ -33,25 +33,29 @@
 
             lines.forEach(line => {
                 const c = line.split(','); 
-                // Pythonの並び順に対応:
                 // c[0]:在庫, c[1]:株価, c[2]:希望, c[3]:評価額, c[4]:単価(@), c[5]:コスト(→), c[6]:ID, c[7]:名称
-                
                 if(c.length < 7) return;
 
+                const id = c[6]; // IDを変数に入れて使いやすくします
                 const row = document.createElement('span');
                 row.className = 'row';
 
-                // ここで以前の見た目通りに組み立て（リンクもここで生成）
+                // 全リンクを組み立て
                 row.innerHTML = 
-                    `${c[0].padStart(7)}株 ` +     // 在庫
-                    `${c[1].padStart(7)} ` +       // 株価
-                    `${c[2].padStart(5)} ` +       // 希望
-                    `${c[3].padStart(10)} ` +      // 評価額
-                    `@${c[4].padStart(4)}→${c[5].padStart(5)} ` + // 単価とコスト
-                    `<a href="https://torihikitoriko.com/zaiko-${c[6]}/#toc0c" target="_blank">${c[6]}</a> ` +
-                    `<a href="https://96ut.com/stock/crosscost.php?code=${c[6]}" target="_blank">ｺｽﾄ</a> ` +
-                    `<a href="https://gokigen-life.tokyo/${c[6]}yutai/" target="_blank">Go</a> ` +
-                    `<a href="history.html?code=${c[6]}" target="_blank">歴</a> ` +
+                    `${c[0].padStart(7)}株 ` +
+                    `${c[1].padStart(7)} ` +
+                    `${c[2].padStart(5)} ` +
+                    `${c[3].padStart(10)} ` +
+                    `@${c[4].padStart(4)}→${c[5].padStart(5)} ` +
+                    // --- ここから全リンク ---
+                    `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank' rel='noreferrer'>${id}</a> ` +
+                    `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel='noreferrer'>ｺｽﾄ</a> ` +
+                    `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel='noreferrer'>Go</a> ` +
+                    `<a href='history.html?code=${id}' target='_blank'>歴</a> ` +
+                    `<a href='history-raku.html?code=${id}' target='_blank'>楽</a> ` +
+                    `<a href='kcom.html?code=${id}' target='_blank'>kcom</a> ` +
+                    `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a> ` +
+                    // --- ここまで全リンク ---
                     `${c[7]}`; // 銘柄名
 
                 outputDiv.appendChild(row);
