@@ -36,7 +36,7 @@
 
 <script>
 const fmt = (val) => {
-    if (val === undefined || val === null || val.trim() === "") return "";
+    if (val === undefined || val === null || String(val).trim() === "") return "";
     const n = parseFloat(String(val).replace(/,/g, ''));
     return isNaN(n) ? val : n.toLocaleString();
 };
@@ -47,21 +47,21 @@ const getID = (str) => {
     return m ? m[0] : null;
 };
 
-async function fetchCSV(url) {
+async function fetchSJIS(url) {
     try {
         const res = await fetch(url);
         if (!res.ok) return null;
         const buffer = await res.arrayBuffer();
         return new TextDecoder('shift-jis').decode(buffer);
-    } catch { return null; }
+    } catch (e) { return null; }
 }
 
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
         const [textR, textE, resM] = await Promise.all([
-            fetchCSV('楽天定時在庫.CSV?' + ts),
-            fetchCSV('MarginBrand.csv?' + ts),
+            fetchSJIS('楽天定時在庫.CSV?' + ts),
+            fetchSJIS('MarginBrand.csv?' + ts),
             fetch('最新在庫_data.csv?' + ts)
         ]);
 
@@ -82,14 +82,13 @@ async function loadAndMergeAll() {
         if (textE) {
             textE.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                // 「長期」判定
-                if (c.length >= 6 && c[2] && c[2].includes("長期")) {
+                // 1列目:コード, 3列目:長期判定, 4列目:在庫(c[3]), 5列目:プレ料(c[4])
+                if (c.length >= 4 && c[2] && c[2].includes("長期")) {
                     const id = getID(c[0]);
                     if (id) {
-                        // 【ここを修正】 4番目(c[4])が在庫、5番目(c[5])がプレミアム料
                         esmaMap[id] = {
-                            s: c[4] ? c[4].trim() : "0", 
-                            p: c[5] ? c[5].trim() : ""
+                            s: c[3] ? c[3].trim() : "0", 
+                            p: c[4] ? c[4].trim() : ""
                         };
                     }
                 }
@@ -119,7 +118,6 @@ async function loadAndMergeAll() {
                 
                 let esmaStr = " ".repeat(19);
                 if (eData) {
-                    // プレミアム料はそのまま、在庫(s)はfmtでカンマ入れ
                     const sDisp = fmt(eData.s);
                     const pDisp = eData.p || "";
                     esmaStr = `E長:${sDisp.padStart(7)} P:${pDisp.padStart(4)} `;
