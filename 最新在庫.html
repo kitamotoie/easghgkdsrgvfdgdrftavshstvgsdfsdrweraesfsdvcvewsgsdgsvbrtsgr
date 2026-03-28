@@ -10,36 +10,34 @@
         }
         header { 
             background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; 
-            position: sticky; top: 0; z-index: 100; line-height: 1.6;
+            position: sticky; top: 0; z-index: 100;
         }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
-        
-        /* 更新情報エリア */
-        .update-info { font-size: 11px; color: #555; display: block; margin-top: 5px; font-weight: bold; }
+        .update-info { font-size: 11px; color: #555; margin-top: 5px; font-weight: bold; }
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
 
-        #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
-        
-        /* 行のホバー設定 */
-        .row { 
-            display: block; 
-            border-bottom: 1px solid #eee; 
-            padding: 2px 0;
-            color: #333;
+        /* テーブル設定：列幅を完全に固定 */
+        table { border-collapse: collapse; margin: 5px 10px; table-layout: fixed; width: auto; }
+        tr { border-bottom: 1px solid #eee; }
+        tr:hover { background-color: #eef6ff; }
+        td { padding: 2px 5px; white-space: pre; overflow: hidden; }
+
+        /* 各列の幅(px)を調整 */
+        .w-main { width: 450px; } 
+        .w-raku { width: 100px; } 
+        .w-esma { width: 150px; } 
+        .w-links { width: 280px; } /* リンク列 */
+        .w-name { width: 500px; } 
+
+        /* リンクを単純なテキスト形式に */
+        .simple-links a { 
+            color: #0077cc; 
+            text-decoration: none; 
+            margin-right: 8px;
         }
-        .row:hover { 
-            background-color: #eef6ff; /* マウスホバーで薄い青 */
-        }
-        
-        /* リンクボタンの設定 */
-        .links a { 
-            color: #0077cc; text-decoration: none; margin-right: 5px; 
-            border: 1px solid #ccc; padding: 0 3px; font-size: 11px;
-            background-color: #fcfcfc;
-        }
-        .links a:hover {
-            background-color: #fffae6;
-            border-color: #ffcc00;
+        .simple-links a:hover { 
+            text-decoration: underline; 
+            background: #fffae6;
         }
     </style>
 </head>
@@ -59,14 +57,75 @@
     </div>
 </header>
 
-<div id="output">全データを照合中...</div>
+<table id="target-table">
+    <tbody id="output-tbody">
+        </tbody>
+</table>
 
 <script>
-// 常時「月/日 時:分」で表示する関数
 function formatFileDate(lastModified) {
     if (!lastModified) return "--/-- --:--";
     const d = new Date(lastModified);
-    const month = (d.getMonth() + 1).toString().padStart(2, '0');
-    const date = d.getDate().toString().padStart(2, '0');
-    const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2
+    const m = (d.getMonth()+1).toString().padStart(2,'0');
+    const date = d.getDate().toString().padStart(2,'0');
+    const h = d.getHours().toString().padStart(2,'0');
+    const min = d.getMinutes().toString().padStart(2,'0');
+    return `${m}/${date} ${h}:${min}`;
+}
+
+async function loadAndMergeAll() {
+    try {
+        const ts = new Date().getTime();
+        
+        // 3つのファイルを同時に読み込み開始（高速化）
+        const [resR, resE, resM] = await Promise.all([
+            fetch('楽天定時在庫.CSV?' + ts),
+            fetch('MarginBrand.csv?' + ts),
+            fetch('最新在庫_data.csv?' + ts)
+        ]);
+
+        const rakutenMap = {};
+        if (resR.ok) {
+            document.getElementById('time-rakuten').textContent = '楽天: ' + formatFileDate(resR.headers.get('Last-Modified'));
+            const text = await resR.text();
+            text.trim().split('\n').forEach(line => {
+                const c = line.split(',');
+                if (c.length > 1) {
+                    const m = c[1].match(/^\d{4}/);
+                    if (m) rakutenMap[m[0]] = c[0].trim();
+                }
+            });
+        }
+
+        const esmaMap = {};
+        if (resE.ok) {
+            document.getElementById('time-esma').textContent = 'Eスマ: ' + formatFileDate(resE.headers.get('Last-Modified'));
+            const text = await resE.text();
+            text.trim().split('\n').forEach(line => {
+                const c = line.split(',');
+                if (c[2] === "長期") esmaMap[c[0]] = { s: c[4] || "0", p: c[5] || "0" };
+            });
+        }
+
+        if (resM.ok) {
+            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resM.headers.get('Last-Modified'));
+            const textMy = await resM.text();
+            const lines = textMy.trim().split('\n');
+            const tbody = document.getElementById('output-tbody');
+            
+            const fmt = (v) => {
+                const n = parseFloat(String(v).replace(/,/g, ''));
+                return isNaN(n) ? v : n.toLocaleString();
+            };
+
+            let htmlBuffer = "";
+            lines.forEach(line => {
+                const c = line.split(',');
+                if (c.length < 7) return;
+                const id = c[6].trim();
+                const r = rakutenMap[id];
+                const e = esmaMap[id];
+
+                // シンプルなリンク構造を組み立て
+                htmlBuffer += `<tr>
+                    <td class="w-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${
