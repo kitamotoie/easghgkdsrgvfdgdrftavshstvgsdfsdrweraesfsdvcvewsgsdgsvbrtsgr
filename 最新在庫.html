@@ -4,14 +4,8 @@
     <meta charset="UTF-8">
     <title>在庫総合管理システム</title>
     <style>
-        body { 
-            font-family: "Courier New", Consolas, monospace; 
-            font-size: 14px; margin: 0; background: #fff; color: #333;
-        }
-        header { 
-            background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; 
-            position: sticky; top: 0; z-index: 100; line-height: 1.6;
-        }
+        body { font-family: "Courier New", Consolas, monospace; font-size: 14px; margin: 0; background: #fff; color: #333; }
+        header { background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 100; line-height: 1.6; }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
         .update-info { font-size: 11px; color: #555; display: block; margin-top: 5px; font-weight: bold; }
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
@@ -41,16 +35,19 @@
 <div id="output">読み込み中...</div>
 
 <script>
-function extractRakutenDate(text) {
-    const m = text.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
-    return m ? `${m[2]}/${m[3]} ${m[4]}:${m[5]}` : "不明";
-}
+// 数字のカンマ付け整形（Eスマ用）
+const fmt = (val) => {
+    if (!val || val.trim() === "") return "";
+    const n = parseFloat(String(val).replace(/,/g, ''));
+    return isNaN(n) ? val : n.toLocaleString();
+};
 
-function formatFileDate(lastModified) {
-    if (!lastModified) return "--/-- --:--";
-    const d = new Date(lastModified);
-    return `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-}
+// 4桁の銘柄コード（英数字含む）を抽出
+const getID = (str) => {
+    if (!str) return null;
+    const m = String(str).trim().match(/[0-9A-Z]{4}/);
+    return m ? m[0] : null;
+};
 
 async function loadAndMergeAll() {
     try {
@@ -61,72 +58,82 @@ async function loadAndMergeAll() {
             fetch('最新在庫_data.csv?' + ts).catch(() => ({ok:false}))
         ]);
 
+        // 1. 楽天解析 (0列目:在庫, 3列目:コード)
         const rakutenMap = {};
         if (resR.ok) {
             const text = await resR.text();
-            document.getElementById('time-rakuten').textContent = '楽天データ: ' + extractRakutenDate(text);
-            text.split('\n').forEach(line => {
+            // 日時抽出
+            const dateMatch = text.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+            if (dateMatch) document.getElementById('time-rakuten').textContent = `楽天データ: ${dateMatch[2]}/${dateMatch[3]} ${dateMatch[4]}:${dateMatch[5]}`;
+            
+            text.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                if (c.length >= 2) {
-                    const code = c[1].trim();
-                    if (code) rakutenMap[code] = c[0].trim().replace(/,/g, '');
+                if (c.length >= 4) {
+                    const id = getID(c[3]); // 4番目の要素（インデックス3）をコードに
+                    if (id) {
+                        rakutenMap[id] = c[0].trim().replace(/,/g, ''); // 1番目の要素を在庫に
+                    }
                 }
             });
         }
 
+        // 2. Eスマ解析 (0列目:コード, 2列目:長期, 4列目:在庫, 5列目:プレ料)
         const esmaMap = {};
         if (resE.ok) {
             const text = await resE.text();
-            text.split('\n').forEach(line => {
+            text.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                // 「長期」が含まれている行なら、列数が少なくても（プレ料が空でも）取得する
-                if (c.length >= 3 && c[2] && c[2].includes("長期")) {
-                    const code = c[0].trim();
-                    esmaMap[code] = { 
-                        s: (c[4] && c[4].trim()) ? c[4].trim() : "0", 
-                        p: (c[5] && c[5].trim()) ? c[5].trim() : " " 
-                    };
+                if (c.length >= 5 && c[2] && c[2].includes("長期")) {
+                    const id = getID(c[0]);
+                    if (id) {
+                        esmaMap[id] = {
+                            s: c[4] ? c[4].trim() : "0",
+                            p: c[5] ? c[5].trim() : ""
+                        };
+                    }
                 }
             });
         }
 
+        // 3. 自分データの表示
         if (resM.ok) {
-            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resM.headers.get('Last-Modified'));
+            const lastModified = resM.headers.get('Last-Modified');
+            if (lastModified) {
+                const d = new Date(lastModified);
+                document.getElementById('time-my').textContent = `自分: ${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+            }
+
             const textMy = await resM.text();
-            const lines = textMy.split('\n');
             const outputDiv = document.getElementById('output');
             outputDiv.innerHTML = '';
 
-            const fmt = (val) => {
-                const n = parseFloat(String(val).replace(/,/g, ''));
-                return isNaN(n) ? val : n.toLocaleString();
-            };
-
-            lines.forEach(line => {
-                const c = line.split(','); 
+            textMy.split(/\r?\n/).forEach(line => {
+                const c = line.split(',');
                 if (c.length < 7) return;
-                const id = c[6].trim();
 
-                const r = rakutenMap[id];
-                const e = esmaMap[id];
+                const id = getID(c[6]); // 自分データのコード
+                if (!id) return;
 
-                // 楽天：ラベル位置固定
-                const rakutenText = r !== undefined ? `楽:${r.padStart(6)} ` : " ".repeat(10);
+                const rStock = rakutenMap[id];
+                const eData = esmaMap[id];
+
+                // 楽天：ラベル位置固定 10文字
+                const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
                 
-                // Eスマ：データがある場合のみ表示。幅19文字で固定
-                let esmaText = " ".repeat(19);
-                if (e) {
-                    const stock = fmt(e.s);
-                    const prem = e.p;
-                    esmaText = `E長:${stock.padStart(7)} P:${prem.padStart(4)} `;
+                // Eスマ：在庫カンマあり。19文字
+                let esmaStr = " ".repeat(19);
+                if (eData) {
+                    const s = fmt(eData.s);
+                    const p = eData.p || "";
+                    esmaStr = `E長:${s.padStart(7)} P:${p.padStart(4)} `;
                 }
 
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
                     `<span class="fixed-box" style="width:460px;">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </span>` + 
-                    `<span class="fixed-box" style="width:100px;">${rakutenText}</span>` + 
-                    `<span class="fixed-box" style="width:165px;">${esmaText}</span>` + 
+                    `<span class="fixed-box" style="width:100px;">${rakutenStr}</span>` + 
+                    `<span class="fixed-box" style="width:170px;">${esmaStr}</span>` + 
                     `<span class="links" style="display:inline-block; width:290px;">` +
                     `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
                     `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
