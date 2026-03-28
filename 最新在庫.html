@@ -14,32 +14,33 @@
         }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
         
+        /* 更新情報エリア */
         .update-info { font-size: 11px; color: #555; display: block; margin-top: 5px; font-weight: bold; }
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
 
         #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
         
+        /* 行のホバー設定 */
         .row { 
-            display: flex; /* Flexboxで列を固定 */
+            display: block; 
             border-bottom: 1px solid #eee; 
             padding: 2px 0;
-            align-items: center;
+            color: #333;
         }
-        .row:hover { background-color: #eef6ff; }
-
-        /* 各列の幅を固定してズレを防止 */
-        .col-main { width: 480px; flex-shrink: 0; } /* 自分在庫～単価コストまで */
-        .col-rakuten { width: 110px; flex-shrink: 0; } /* 楽天在庫 */
-        .col-esma { width: 160px; flex-shrink: 0; }    /* Eスマ在庫・プレ料 */
-        .col-links { width: 330px; flex-shrink: 0; }   /* リンク集 */
-        .col-name { flex-grow: 1; min-width: 200px; }  /* 銘柄名 */
+        .row:hover { 
+            background-color: #eef6ff; /* マウスホバーで薄い青 */
+        }
         
+        /* リンクボタンの設定 */
         .links a { 
             color: #0077cc; text-decoration: none; margin-right: 5px; 
             border: 1px solid #ccc; padding: 0 3px; font-size: 11px;
             background-color: #fcfcfc;
         }
-        .links a:hover { background-color: #fffae6; border-color: #ffcc00; }
+        .links a:hover {
+            background-color: #fffae6;
+            border-color: #ffcc00;
+        }
     </style>
 </head>
 <body>
@@ -58,103 +59,14 @@
     </div>
 </header>
 
-<div id="output">読み込み中...</div>
+<div id="output">全データを照合中...</div>
 
 <script>
+// 常時「月/日 時:分」で表示する関数
 function formatFileDate(lastModified) {
     if (!lastModified) return "--/-- --:--";
     const d = new Date(lastModified);
     const month = (d.getMonth() + 1).toString().padStart(2, '0');
     const date = d.getDate().toString().padStart(2, '0');
     const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    return `${month}/${date} ${hours}:${minutes}`;
-}
-
-async function loadAndMergeAll() {
-    try {
-        const ts = new Date().getTime();
-        
-        const resRakuten = await fetch('楽天定時在庫.CSV?' + ts);
-        const rakutenMap = {};
-        if (resRakuten.ok) {
-            document.getElementById('time-rakuten').textContent = '楽天: ' + formatFileDate(resRakuten.headers.get('Last-Modified'));
-            const text = await resRakuten.text();
-            text.trim().split('\n').forEach(line => {
-                const c = line.split(',');
-                if (c.length > 1) {
-                    const codeMatch = c[1].trim().match(/^\d{4}/);
-                    if (codeMatch) rakutenMap[codeMatch[0]] = c[0].trim();
-                }
-            });
-        }
-
-        const resEsma = await fetch('MarginBrand.csv?' + ts);
-        const esmaMap = {};
-        if (resEsma.ok) {
-            document.getElementById('time-esma').textContent = 'Eスマ: ' + formatFileDate(resEsma.headers.get('Last-Modified'));
-            const text = await resEsma.text();
-            text.trim().split('\n').forEach(line => {
-                const c = line.split(',');
-                if (c[2] === "長期") {
-                    esmaMap[c[0]] = { stock: c[4] || "0", prem: c[5] || "0" };
-                }
-            });
-        }
-
-        const resMy = await fetch('最新在庫_data.csv?' + ts);
-        if (resMy.ok) {
-            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resMy.headers.get('Last-Modified'));
-        }
-        const textMy = await resMy.text();
-        const myLines = textMy.trim().split('\n');
-        
-        const outputDiv = document.getElementById('output');
-        outputDiv.innerHTML = '';
-
-        const fmt = (val) => {
-            const n = parseFloat(String(val).replace(/,/g, ''));
-            return isNaN(n) ? val : n.toLocaleString();
-        };
-
-        myLines.forEach(line => {
-            const c = line.split(','); 
-            if (c.length < 7) return;
-            const id = c[6].trim();
-            
-            // 楽天
-            const rStock = rakutenMap[id];
-            const rakutenContent = (rStock !== undefined) ? `楽:${fmt(rStock).padStart(6)} ` : "";
-
-            // Eスマ
-            const eData = esmaMap[id];
-            const esmaContent = (eData) ? `E長:${fmt(eData.stock).padStart(6)} P:${eData.prem.padStart(4)} ` : "";
-
-            const row = document.createElement('div');
-            row.className = 'row';
-            row.innerHTML = `
-                <div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)}</div>
-                <div class="col-rakuten">${rakutenContent}</div>
-                <div class="col-esma">${esmaContent}</div>
-                <div class="col-links links">
-                    <a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>
-                    <a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>
-                    <a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>
-                    <a href='history.html?code=${id}' target='_blank'>歴</a>
-                    <a href='history-raku.html?code=${id}' target='_blank'>楽</a>
-                    <a href='kcom.html?code=${id}' target='_blank'>kcom</a>
-                    <a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>
-                </div>
-                <div class="col-name">${c[7]}</div>
-            `;
-            outputDiv.appendChild(row);
-        });
-
-    } catch (err) {
-        document.getElementById('output').textContent = 'エラー: ' + err.message;
-    }
-}
-loadAndMergeAll();
-</script>
-</body>
-</html>
+    const minutes = d.getMinutes().toString().padStart(2
