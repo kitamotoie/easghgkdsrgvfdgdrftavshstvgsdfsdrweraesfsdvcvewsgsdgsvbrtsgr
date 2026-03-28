@@ -2,137 +2,118 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>最新在庫管理システム</title>
+    <title>在庫照合システム</title>
     <style>
-        /* 全体のフォント設定（等幅フォントで列を揃える） */
         body { 
             font-family: "Courier New", Consolas, monospace; 
-            font-size: 16px; 
-            margin: 0; 
-            background: #fff; 
-            color: #333;
+            font-size: 15px; margin: 0; background: #fff; color: #333;
         }
-        /* ヘッダー部分のデザイン */
         header { 
-            background-color: #f8f8f8; 
-            padding: 8px 15px; 
-            border-bottom: 1px solid #ccc; 
-            position: sticky; 
-            top: 0;
-            z-index: 100;
+            background-color: #f8f8f8; padding: 8px 15px; border-bottom: 1px solid #ccc; 
+            position: sticky; top: 0; z-index: 100;
         }
-        header a { 
-            text-decoration: none; 
-            color: #0077cc; 
-            font-weight: bold; 
-            margin-right: 20px; 
-            font-size: 14px;
-        }
-        header a:hover { text-decoration: underline; }
-        
-        /* 在庫行の表示設定（折り返し禁止・横スクロール） */
-        #output { 
-            white-space: pre; 
-            padding: 15px; 
-            line-height: 1.6; 
-            overflow-x: auto; 
-        }
-        .row { 
-            display: block; 
-            border-bottom: 1px solid #eee; 
-            padding: 2px 0;
-        }
+        header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
+        #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
+        .row { display: block; border-bottom: 1px solid #eee; }
         .row:hover { background-color: #f0f7ff; }
-
-        /* リンクのデザイン */
-        .links a { 
-            color: #0077cc; 
-            text-decoration: none; 
-            margin-right: 10px; 
-            border: 1px solid #e0e0e0;
-            padding: 1px 4px;
-            border-radius: 3px;
-            background: #fafafa;
-            font-size: 13px;
-        }
-        .links a:hover { 
-            background: #fffae6; 
-            border-color: #ffd700; 
-        }
         
-        #update-time { font-size: 12px; color: #888; margin-left: 10px; }
+        /* 楽天在庫情報のデザイン（ピンク色で強調） */
+        .rakuten-info { color: #d63384; font-weight: bold; }
+        
+        .links a { 
+            color: #0077cc; text-decoration: none; margin-right: 5px; 
+            border: 1px solid #e0e0e0; padding: 0 3px; background: #fafafa; font-size: 12px;
+        }
+        #update-time { font-size: 12px; color: #888; }
     </style>
 </head>
 <body>
 
-    <header>
-        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%B2_cross_check.html" target="_blank">ひチェック</a>
-        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BE_cross_check.html" target="_blank">まチェック</a>
-        <a href="https://piyoch.com/news/" target="_blank">ぴよの</a>
-        <a href="https://gokigen-life.tokyo/calendar/" target="_blank">ごきカレ</a>
-        <span id="update-time">読み込み中...</span>
-    </header>
+<header>
+    <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%B2_cross_check.html" target="_blank">ひチェック</a>
+    <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BE_cross_check.html" target="_blank">まチェック</a>
+    <span id="update-time">読み込み中...</span>
+</header>
 
-    <div id="output">CSVデータを読み込んでいます...</div>
+<div id="output">データを照合中...</div>
 
-    <script>
-        async function loadAndBuild() {
-            try {
-                // キャッシュを回避してCSVを取得
-                const res = await fetch('最新在庫_data.csv?' + new Date().getTime());
-                if (!res.ok) throw new Error('CSVが見つかりません');
+<script>
+async function loadAndMerge() {
+    try {
+        const timestamp = new Date().getTime();
+        
+        // 1. 楽天定時在庫.CSV を読み込んで辞書化
+        const resRakuten = await fetch('楽天定時在庫.CSV?' + timestamp);
+        const textRakuten = await resRakuten.text();
+        const rakutenMap = {};
+        
+        textRakuten.trim().split('\n').forEach(line => {
+            const c = line.split(',');
+            if (c.length > 1) {
+                const stockCount = c[0].trim(); // 1列目: 在庫数
+                const rawCode = c[1].trim();    // 2列目: "8160 木曽路(短)"
+                const codeMatch = rawCode.match(/^\d{4}/); // 先頭の4桁数字を抽出
                 
-                const text = await res.text();
-                const lines = text.trim().split('\n');
-                const outputDiv = document.getElementById('output');
-                outputDiv.innerHTML = '';
-
-                // 数値にカンマを付ける関数
-                const fmt = (val) => {
-                    const n = parseFloat(String(val).replace(/,/g, ''));
-                    return isNaN(n) ? val : n.toLocaleString();
-                };
-
-                lines.forEach(line => {
-                    // カンマで分割
-                    const c = line.split(','); 
-                    // 期待する順番: 0在庫, 1株価, 2希望, 3評価額, 4単価, 5コスト, 6ID, 7名称
-                    if (c.length < 7) return;
-
-                    const id = c[6].trim();
-                    const row = document.createElement('span');
-                    row.className = 'row';
-
-                    // 文字列の組み立て
-                    row.innerHTML = 
-                        `${c[0].padStart(7)}株 ` +         // 在庫
-                        `${fmt(c[1]).padStart(8)} ` +      // 株価
-                        `${c[2].padStart(5)} ` +           // 希望
-                        `${fmt(c[3]).padStart(11)} ` +     // 評価額
-                        `@${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(6)} ` + // 単価→コスト
-                        `<span class="links">` +
-                        `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
-                        `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
-                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>` +
-                        `<a href='history.html?code=${id}' target='_blank'>歴</a>` +
-                        `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
-                        `<a href='kcom.html?code=${id}' target='_blank'>kcom</a>` +
-                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>` +
-                        `</span>` +
-                        `${c[7]}`; // 銘柄名
-
-                    outputDiv.appendChild(row);
-                });
-
-                document.getElementById('update-time').textContent = '更新: ' + new Date().toLocaleString();
-
-            } catch (err) {
-                document.getElementById('output').textContent = 'エラー: ' + err.message;
+                if (codeMatch) {
+                    rakutenMap[codeMatch[0]] = stockCount;
+                }
             }
-        }
+        });
 
-        // 実行
-        loadAndBuild();
-    </script>
+        // 2. 自分のリスト (最新在庫_data.csv) を読み込み
+        const resMy = await fetch('最新在庫_data.csv?' + timestamp);
+        const textMy = await resMy.text();
+        const myLines = textMy.trim().split('\n');
+        
+        const outputDiv = document.getElementById('output');
+        outputDiv.innerHTML = '';
+
+        const fmt = (val) => {
+            const n = parseFloat(String(val).replace(/,/g, ''));
+            return isNaN(n) ? val : n.toLocaleString();
+        };
+
+        myLines.forEach(line => {
+            const c = line.split(','); 
+            if (c.length < 7) return;
+
+            const id = c[6].trim();
+            const rStock = rakutenMap[id]; // 楽天側の在庫があるか
+            
+            // 楽天情報の文字列作成（あれば表示、なければ空白）
+            let rakutenStr = "".padStart(15); 
+            if (rStock !== undefined) {
+                const s = `[楽:${fmt(rStock).padStart(6)}]`;
+                rakutenStr = `<span class="rakuten-info">${s.padEnd(15)}</span>`;
+            }
+
+            const row = document.createElement('span');
+            row.className = 'row';
+            row.innerHTML = 
+                `${c[0].padStart(7)}株 ` + 
+                `${fmt(c[1]).padStart(7)} ` + 
+                `${c[2].padStart(5)} ` + 
+                `${fmt(c[3]).padStart(10)} ` + 
+                `@${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} ` + 
+                rakutenStr + // 楽天の在庫数を挿入
+                `<span class="links">` +
+                `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
+                `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
+                `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>` +
+                `</span>` +
+                `${c[7]}`;
+
+            outputDiv.appendChild(row);
+        });
+
+        document.getElementById('update-time').textContent = '更新: ' + new Date().toLocaleString();
+
+    } catch (err) {
+        document.getElementById('output').textContent = 'エラー: ' + err.message;
+    }
+}
+
+loadAndMerge();
+</script>
 </body>
 </html>
