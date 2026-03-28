@@ -35,54 +35,59 @@
 <div id="output">読み込み中...</div>
 
 <script>
-// 数字のカンマ付け整形（Eスマ用）
+// 数値整形（Eスマ在庫用）
 const fmt = (val) => {
-    if (!val || val.trim() === "") return "";
+    if (!val || val.trim() === "") return "0";
     const n = parseFloat(String(val).replace(/,/g, ''));
     return isNaN(n) ? val : n.toLocaleString();
 };
 
-// 4桁の銘柄コード（英数字含む）を抽出
+// 4桁コード抽出
 const getID = (str) => {
     if (!str) return null;
     const m = String(str).trim().match(/[0-9A-Z]{4}/);
     return m ? m[0] : null;
 };
 
+// CSVをShift-JISとして読み込む関数
+async function fetchCSV(url) {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    const decoder = new TextDecoder('shift-jis'); // ここが重要：Shift-JISでデコード
+    return decoder.decode(buffer);
+}
+
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
-        const [resR, resE, resM] = await Promise.all([
-            fetch('楽天定時在庫.CSV?' + ts).catch(() => ({ok:false})),
-            fetch('MarginBrand.csv?' + ts).catch(() => ({ok:false})),
-            fetch('最新在庫_data.csv?' + ts).catch(() => ({ok:false}))
+        const [textR, textE, resM] = await Promise.all([
+            fetchCSV('楽天定時在庫.CSV?' + ts),
+            fetchCSV('MarginBrand.csv?' + ts),
+            fetch('最新在庫_data.csv?' + ts)
         ]);
 
         // 1. 楽天解析 (0列目:在庫, 3列目:コード)
         const rakutenMap = {};
-        if (resR.ok) {
-            const text = await resR.text();
-            // 日時抽出
-            const dateMatch = text.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+        if (textR) {
+            const dateMatch = textR.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
             if (dateMatch) document.getElementById('time-rakuten').textContent = `楽天データ: ${dateMatch[2]}/${dateMatch[3]} ${dateMatch[4]}:${dateMatch[5]}`;
             
-            text.split(/\r?\n/).forEach(line => {
+            textR.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 if (c.length >= 4) {
-                    const id = getID(c[3]); // 4番目の要素（インデックス3）をコードに
-                    if (id) {
-                        rakutenMap[id] = c[0].trim().replace(/,/g, ''); // 1番目の要素を在庫に
-                    }
+                    const id = getID(c[3]);
+                    if (id) rakutenMap[id] = c[0].trim().replace(/,/g, '');
                 }
             });
         }
 
-        // 2. Eスマ解析 (0列目:コード, 2列目:長期, 4列目:在庫, 5列目:プレ料)
+        // 2. Eスマ解析 (1列目:コード, 3列目:区分, 5列目:在庫, 6列目:プレ料)
         const esmaMap = {};
-        if (resE.ok) {
-            const text = await resE.text();
-            text.split(/\r?\n/).forEach(line => {
+        if (textE) {
+            textE.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
+                // 1列目がコード、3列目(c[2])に「長期」が含まれている行のみ取得
                 if (c.length >= 5 && c[2] && c[2].includes("長期")) {
                     const id = getID(c[0]);
                     if (id) {
@@ -95,7 +100,7 @@ async function loadAndMergeAll() {
             });
         }
 
-        // 3. 自分データの表示
+        // 3. 自分データ表示
         if (resM.ok) {
             const lastModified = resM.headers.get('Last-Modified');
             if (lastModified) {
@@ -111,16 +116,16 @@ async function loadAndMergeAll() {
                 const c = line.split(',');
                 if (c.length < 7) return;
 
-                const id = getID(c[6]); // 自分データのコード
+                const id = getID(c[6]);
                 if (!id) return;
 
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
 
-                // 楽天：ラベル位置固定 10文字
+                // 楽天：10文字
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
                 
-                // Eスマ：在庫カンマあり。19文字
+                // Eスマ：19文字（ここで「E長:」という文字を出しています）
                 let esmaStr = " ".repeat(19);
                 if (eData) {
                     const s = fmt(eData.s);
