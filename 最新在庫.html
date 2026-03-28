@@ -7,7 +7,6 @@
     
     <title>在庫総合管理システム</title>
     <style>
-        /* 数字の縦列を揃えるため、標準的な等幅フォントセットを指定 */
         body { 
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
             font-size: 16px; 
@@ -19,16 +18,15 @@
         header { background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 100; line-height: 1.6; }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 15px; }
         
-        .update-info { font-size: 13px; color: #444; display: flex; flex-wrap: wrap; gap: 25px; margin-top: 8px; font-weight: bold; }
+        .update-info { font-size: 13px; color: #444; display: flex; flex-wrap: wrap; gap: 20px; margin-top: 8px; font-weight: bold; }
         .update-info span { border-left: 4px solid #0077cc; padding-left: 8px; white-space: nowrap; }
-        .update-info span:not(:last-child)::after { content: " |"; color: #ccc; margin-left: 20px; }
+        .update-info span:not(:last-child)::after { content: " |"; color: #ccc; margin-left: 15px; }
 
         #output { padding: 10px; line-height: 1.6; overflow-x: auto; }
         
         .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1500px; }
         .row:hover { background-color: #eef6ff; }
         
-        /* 等幅フォントに合わせて幅を455pxに調整。これでコード番号と密着します */
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; padding-right: 0px; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 300px; flex-shrink: 0; }
@@ -74,13 +72,12 @@ const getID = (str) => {
     return m ? m[0] : null;
 };
 
-function updateTimeLabel(res, elementId, label) {
-    if (!res.ok) return;
-    const lastMod = res.headers.get('Last-Modified');
-    if (lastMod) {
-        const d = new Date(lastMod);
-        document.getElementById(elementId).textContent = `${label}: ${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-    }
+// ヘッダーから日付文字列を抽出するだけのシンプルな関数
+function getLM(res) {
+    const lm = res.headers.get('Last-Modified');
+    if (!lm) return "--/-- --:--";
+    const d = new Date(lm);
+    return `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
 }
 
 async function loadAndMergeAll() {
@@ -88,16 +85,19 @@ async function loadAndMergeAll() {
         const ts = new Date().getTime();
         const fetchOpt = { cache: 'no-store' };
 
+        // 同時に取得
         const [resR, resE, resM] = await Promise.all([
             fetch('楽天定時在庫.CSV?' + ts, fetchOpt),
             fetch('MarginBrand.csv?' + ts, fetchOpt),
             fetch('最新在庫_data.csv?' + ts, fetchOpt)
         ]);
 
-        updateTimeLabel(resR, 'time-rakuten', '楽天');
-        updateTimeLabel(resE, 'time-esma', 'Eスマ');
-        updateTimeLabel(resM, 'time-my', '自分');
+        // 各レスポンスが生きているうちに即座に更新日を取得して表示
+        if (resR.ok) document.getElementById('time-rakuten').textContent = `楽天: ${getLM(resR)}`;
+        if (resE.ok) document.getElementById('time-esma').textContent = `Eスマ: ${getLM(resE)}`;
+        if (resM.ok) document.getElementById('time-my').textContent = `自分: ${getLM(resM)}`;
 
+        // その後で中身のテキスト化処理
         const textR = resR.ok ? new TextDecoder('shift-jis').decode(await resR.arrayBuffer()) : null;
         const textE = resE.ok ? new TextDecoder('shift-jis').decode(await resE.arrayBuffer()) : null;
         const textMy = resM.ok ? await resM.text() : null;
