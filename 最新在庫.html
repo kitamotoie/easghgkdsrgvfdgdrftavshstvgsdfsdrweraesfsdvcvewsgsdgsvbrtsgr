@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>在庫照合システム</title>
+    <title>在庫総合照合システム</title>
     <style>
         body { 
             font-family: "Courier New", Consolas, monospace; 
-            font-size: 15px; margin: 0; background: #fff; color: #333;
+            font-size: 14px; margin: 0; background: #fff; color: #333;
         }
         header { 
             background-color: #f8f8f8; padding: 8px 15px; border-bottom: 1px solid #ccc; 
@@ -14,15 +14,12 @@
         }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
         #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
-        .row { display: block; border-bottom: 1px solid #eee; }
-        .row:hover { background-color: #f0f7ff; }
+        .row { display: block; border-bottom: 1px solid #eee; padding: 2px 0; }
         
-        /* 楽天在庫情報のデザイン（ピンク色で強調） */
-        .rakuten-info { color: #d63384; font-weight: bold; }
-        
+        /* リンクの枠線もシンプルに */
         .links a { 
             color: #0077cc; text-decoration: none; margin-right: 5px; 
-            border: 1px solid #e0e0e0; padding: 0 3px; background: #fafafa; font-size: 12px;
+            border: 1px solid #ccc; padding: 0 3px; font-size: 11px;
         }
         #update-time { font-size: 12px; color: #888; }
     </style>
@@ -30,38 +27,47 @@
 <body>
 
 <header>
-    <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%B2_cross_check.html" target="_blank">ひチェック</a>
-    <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BE_cross_check.html" target="_blank">まチェック</a>
+    <a href="https://..." target="_blank">ひチェック</a>
+    <a href="https://..." target="_blank">まチェック</a>
     <span id="update-time">読み込み中...</span>
 </header>
 
-<div id="output">データを照合中...</div>
+<div id="output">全データを照合中...</div>
 
 <script>
-async function loadAndMerge() {
+async function loadAndMergeAll() {
     try {
-        const timestamp = new Date().getTime();
+        const ts = new Date().getTime();
         
-        // 1. 楽天定時在庫.CSV を読み込んで辞書化
-        const resRakuten = await fetch('楽天定時在庫.CSV?' + timestamp);
-        const textRakuten = await resRakuten.text();
+        // --- 1. 楽天定時在庫.CSV の読み込み ---
+        const resRakuten = await fetch('楽天定時在庫.CSV?' + ts);
         const rakutenMap = {};
-        
-        textRakuten.trim().split('\n').forEach(line => {
-            const c = line.split(',');
-            if (c.length > 1) {
-                const stockCount = c[0].trim(); // 1列目: 在庫数
-                const rawCode = c[1].trim();    // 2列目: "8160 木曽路(短)"
-                const codeMatch = rawCode.match(/^\d{4}/); // 先頭の4桁数字を抽出
-                
-                if (codeMatch) {
-                    rakutenMap[codeMatch[0]] = stockCount;
+        if (resRakuten.ok) {
+            const text = await resRakuten.text();
+            text.trim().split('\n').forEach(line => {
+                const c = line.split(',');
+                if (c.length > 1) {
+                    const codeMatch = c[1].trim().match(/^\d{4}/);
+                    if (codeMatch) rakutenMap[codeMatch[0]] = c[0].trim();
                 }
-            }
-        });
+            });
+        }
 
-        // 2. 自分のリスト (最新在庫_data.csv) を読み込み
-        const resMy = await fetch('最新在庫_data.csv?' + timestamp);
+        // --- 2. MarginBrand.csv (Eスマ) の読み込み ---
+        const resEsma = await fetch('MarginBrand.csv?' + ts);
+        const esmaMap = {};
+        if (resEsma.ok) {
+            const text = await resEsma.text();
+            text.trim().split('\n').forEach(line => {
+                const c = line.split(',');
+                if (c[2] === "長期") {
+                    esmaMap[c[0]] = { stock: c[4] || "0", prem: c[5] || "0" };
+                }
+            });
+        }
+
+        // --- 3. 最新在庫_data.csv (自分のリスト) の読み込み ---
+        const resMy = await fetch('最新在庫_data.csv?' + ts);
         const textMy = await resMy.text();
         const myLines = textMy.trim().split('\n');
         
@@ -78,13 +84,19 @@ async function loadAndMerge() {
             if (c.length < 7) return;
 
             const id = c[6].trim();
-            const rStock = rakutenMap[id]; // 楽天側の在庫があるか
             
-            // 楽天情報の文字列作成（あれば表示、なければ空白）
-            let rakutenStr = "".padStart(15); 
+            // 楽天情報（色なし）
+            const rStock = rakutenMap[id];
+            let rakutenStr = "".padStart(13);
             if (rStock !== undefined) {
-                const s = `[楽:${fmt(rStock).padStart(6)}]`;
-                rakutenStr = `<span class="rakuten-info">${s.padEnd(15)}</span>`;
+                rakutenStr = `楽:${fmt(rStock).padStart(6)} `;
+            }
+
+            // Eスマ情報（色なし）
+            const eData = esmaMap[id];
+            let esmaStr = "".padStart(20);
+            if (eData) {
+                esmaStr = `E長:${fmt(eData.stock).padStart(6)} P:${eData.prem.padStart(4)} `;
             }
 
             const row = document.createElement('span');
@@ -95,7 +107,8 @@ async function loadAndMerge() {
                 `${c[2].padStart(5)} ` + 
                 `${fmt(c[3]).padStart(10)} ` + 
                 `@${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} ` + 
-                rakutenStr + // 楽天の在庫数を挿入
+                rakutenStr + 
+                esmaStr +
                 `<span class="links">` +
                 `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
                 `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
@@ -113,7 +126,7 @@ async function loadAndMerge() {
     }
 }
 
-loadAndMerge();
+loadAndMergeAll();
 </script>
 </body>
 </html>
