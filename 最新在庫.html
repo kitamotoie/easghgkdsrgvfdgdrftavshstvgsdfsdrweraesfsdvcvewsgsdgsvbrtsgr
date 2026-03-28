@@ -11,16 +11,16 @@
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
         #output { white-space: pre; padding: 10px; line-height: 1.6; overflow-x: auto; }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1700px; }
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1650px; }
         .row:hover { background-color: #eef6ff; }
         
-        /* col-main: 540から580に微増。これで大きな数字が入っても「とりこリンク」を押し出しません */
-        .col-main { width: 580px; flex-shrink: 0; white-space: pre; padding-right: 15px; box-sizing: border-box; }
+        /* col-main: 580から560へ。さらに右余白を5pxに削ってコード番号を左へ寄せました */
+        .col-main { width: 560px; flex-shrink: 0; white-space: pre; padding-right: 5px; box-sizing: border-box; }
         /* 銘柄名エリア */
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 15px; }
         /* リンク集エリア */
         .col-links { width: 300px; flex-shrink: 0; }
-        /* 在庫エリア：右端。少し幅を広げて16pxでも数値が余裕で収まるように調整 */
+        /* 在庫エリア */
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
 
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
