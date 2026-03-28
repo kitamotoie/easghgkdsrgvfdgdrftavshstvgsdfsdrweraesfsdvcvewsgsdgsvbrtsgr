@@ -4,32 +4,30 @@
     <meta charset="UTF-8">
     <title>在庫総合管理システム</title>
     <style>
-        body { font-family: "Courier New", Consolas, monospace; font-size: 14px; margin: 0; background: #fff; color: #333; }
+        /* 全体：16px、太字なし、等幅フォント */
+        body { font-family: "Courier New", Consolas, monospace; font-size: 16px; margin: 0; background: #fff; color: #333; font-weight: normal; }
         header { background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 100; line-height: 1.6; }
-        header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
-        .update-info { font-size: 11px; color: #555; display: block; margin-top: 5px; font-weight: bold; }
+        header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 15px; }
+        .update-info { font-size: 13px; color: #555; display: block; margin-top: 5px; font-weight: bold; }
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
-        #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
+        #output { white-space: pre; padding: 10px; line-height: 1.6; overflow-x: auto; }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 4px 0; align-items: center; min-width: 1400px; }
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1700px; font-weight: normal; }
         .row:hover { background-color: #eef6ff; }
         
-        /* 左側（株数・価格）の幅を500pxに拡大して、コード番号との距離を確保 */
-        .col-main { width: 500px; flex-shrink: 0; white-space: pre; letter-spacing: 0.05em; }
-        /* 銘柄名（コード含む） */
-        .col-name { width: 350px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 20px; }
-        /* リンク群 */
-        .col-links { width: 250px; flex-shrink: 0; }
-        /* 在庫情報（右端） */
-        .col-stock { width: 320px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; font-weight: bold; border-left: 1px solid #ddd; }
+        /* 各列の幅設定 */
+        .col-main { width: 620px; flex-shrink: 0; white-space: pre; padding-right: 30px; box-sizing: border-box; }
+        .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 15px; }
+        .col-links { width: 300px; flex-shrink: 0; }
+        .col-stock { width: 360px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
 
-        .links a { color: #0077cc; text-decoration: none; margin-right: 8px; font-size: 13px; }
+        .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; background-color: #fffae6; }
         
-        /* コードリンク（とりこ）の見栄え調整 */
-        .code-link { color: #0077cc; text-decoration: none; font-weight: bold; margin-right: 8px; padding: 0 4px; background: #f0f7ff; border-radius: 3px; }
-        .code-link:hover { background-color: #0077cc; color: #fff; }
-        .name-text { color: #000; font-weight: bold; }
+        /* コードリンク：強調（背景・太字）をすべて削除 */
+        .code-link { color: #0077cc; text-decoration: none; margin-right: 10px; display: inline-block; }
+        .code-link:hover { text-decoration: underline; background-color: #fffae6; }
+        .name-text { color: #000; }
     </style>
 </head>
 <body>
