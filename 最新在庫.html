@@ -2,39 +2,55 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>在庫総合照合システム</title>
+    <title>在庫総合管理システム</title>
     <style>
         body { 
             font-family: "Courier New", Consolas, monospace; 
             font-size: 14px; margin: 0; background: #fff; color: #333;
         }
         header { 
-            background-color: #f8f8f8; padding: 8px 15px; border-bottom: 1px solid #ccc; 
-            position: sticky; top: 0; z-index: 100;
+            background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; 
+            position: sticky; top: 0; z-index: 100; line-height: 1.6;
         }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 13px; }
+        .update-info { font-size: 11px; color: #666; display: block; margin-top: 5px; }
+        .update-info span { margin-right: 15px; border-left: 3px solid #ccc; padding-left: 5px; }
+
         #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
         .row { display: block; border-bottom: 1px solid #eee; padding: 2px 0; }
         
-        /* リンクの枠線もシンプルに */
         .links a { 
             color: #0077cc; text-decoration: none; margin-right: 5px; 
             border: 1px solid #ccc; padding: 0 3px; font-size: 11px;
+            background-color: #fcfcfc;
         }
-        #update-time { font-size: 12px; color: #888; }
     </style>
 </head>
 <body>
 
 <header>
-    <a href="https://..." target="_blank">ひチェック</a>
-    <a href="https://..." target="_blank">まチェック</a>
-    <span id="update-time">読み込み中...</span>
+    <div>
+        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%B2_cross_check.html" target="_blank">ひチェック</a>
+        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BE_cross_check.html" target="_blank">まチェック</a>
+        <a href="https://piyoch.com/news/" target="_blank">ぴよの</a>
+        <a href="https://gokigen-life.tokyo/calendar/" target="_blank">ごきカレ</a>
+    </div>
+    <div class="update-info">
+        <span id="time-my">自分: --:--</span>
+        <span id="time-rakuten">楽天: --:--</span>
+        <span id="time-esma">Eスマ: --:--</span>
+    </div>
 </header>
 
 <div id="output">全データを照合中...</div>
 
 <script>
+// 日付をフォーマットする関数
+function formatFileDate(lastModified) {
+    const d = new Date(lastModified);
+    return d.toLocaleTimeString('ja-JP', {hour: '2-digit', minute:'2-digit'});
+}
+
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
@@ -43,6 +59,7 @@ async function loadAndMergeAll() {
         const resRakuten = await fetch('楽天定時在庫.CSV?' + ts);
         const rakutenMap = {};
         if (resRakuten.ok) {
+            document.getElementById('time-rakuten').textContent = '楽天: ' + formatFileDate(resRakuten.headers.get('Last-Modified') || new Date());
             const text = await resRakuten.text();
             text.trim().split('\n').forEach(line => {
                 const c = line.split(',');
@@ -57,6 +74,7 @@ async function loadAndMergeAll() {
         const resEsma = await fetch('MarginBrand.csv?' + ts);
         const esmaMap = {};
         if (resEsma.ok) {
+            document.getElementById('time-esma').textContent = 'Eスマ: ' + formatFileDate(resEsma.headers.get('Last-Modified') || new Date());
             const text = await resEsma.text();
             text.trim().split('\n').forEach(line => {
                 const c = line.split(',');
@@ -68,6 +86,9 @@ async function loadAndMergeAll() {
 
         // --- 3. 最新在庫_data.csv (自分のリスト) の読み込み ---
         const resMy = await fetch('最新在庫_data.csv?' + ts);
+        if (resMy.ok) {
+            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resMy.headers.get('Last-Modified') || new Date());
+        }
         const textMy = await resMy.text();
         const myLines = textMy.trim().split('\n');
         
@@ -85,14 +106,12 @@ async function loadAndMergeAll() {
 
             const id = c[6].trim();
             
-            // 楽天情報（色なし）
             const rStock = rakutenMap[id];
             let rakutenStr = "".padStart(13);
             if (rStock !== undefined) {
                 rakutenStr = `楽:${fmt(rStock).padStart(6)} `;
             }
 
-            // Eスマ情報（色なし）
             const eData = esmaMap[id];
             let esmaStr = "".padStart(20);
             if (eData) {
@@ -111,15 +130,17 @@ async function loadAndMergeAll() {
                 esmaStr +
                 `<span class="links">` +
                 `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
+                `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
+                `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>` +
+                `<a href='history.html?code=${id}' target='_blank'>歴</a>` +
                 `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
+                `<a href='kcom.html?code=${id}' target='_blank'>kcom</a>` +
                 `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>` +
                 `</span>` +
                 `${c[7]}`;
 
             outputDiv.appendChild(row);
         });
-
-        document.getElementById('update-time').textContent = '更新: ' + new Date().toLocaleString();
 
     } catch (err) {
         document.getElementById('output').textContent = 'エラー: ' + err.message;
