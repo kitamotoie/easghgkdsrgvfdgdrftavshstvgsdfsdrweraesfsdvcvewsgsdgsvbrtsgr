@@ -17,12 +17,28 @@
         .update-info span { margin-right: 15px; border-left: 3px solid #ccc; padding-left: 5px; }
 
         #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
-        .row { display: block; border-bottom: 1px solid #eee; padding: 2px 0; }
+        
+        /* --- ここが復活したホバー機能 --- */
+        .row { 
+            display: block; 
+            border-bottom: 1px solid #eee; 
+            padding: 2px 0;
+            color: #333;
+            text-decoration: none;
+        }
+        .row:hover { 
+            background-color: #eef6ff; /* マウスが当たった時の薄い青色 */
+        }
+        /* ------------------------------ */
         
         .links a { 
             color: #0077cc; text-decoration: none; margin-right: 5px; 
             border: 1px solid #ccc; padding: 0 3px; font-size: 11px;
             background-color: #fcfcfc;
+        }
+        .links a:hover {
+            background-color: #fffae6;
+            border-color: #ffcc00;
         }
     </style>
 </head>
@@ -45,8 +61,8 @@
 <div id="output">全データを照合中...</div>
 
 <script>
-// 日付をフォーマットする関数
 function formatFileDate(lastModified) {
+    if (!lastModified) return "--:--";
     const d = new Date(lastModified);
     return d.toLocaleTimeString('ja-JP', {hour: '2-digit', minute:'2-digit'});
 }
@@ -55,11 +71,10 @@ async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
         
-        // --- 1. 楽天定時在庫.CSV の読み込み ---
         const resRakuten = await fetch('楽天定時在庫.CSV?' + ts);
         const rakutenMap = {};
         if (resRakuten.ok) {
-            document.getElementById('time-rakuten').textContent = '楽天: ' + formatFileDate(resRakuten.headers.get('Last-Modified') || new Date());
+            document.getElementById('time-rakuten').textContent = '楽天: ' + formatFileDate(resRakuten.headers.get('Last-Modified'));
             const text = await resRakuten.text();
             text.trim().split('\n').forEach(line => {
                 const c = line.split(',');
@@ -70,11 +85,10 @@ async function loadAndMergeAll() {
             });
         }
 
-        // --- 2. MarginBrand.csv (Eスマ) の読み込み ---
         const resEsma = await fetch('MarginBrand.csv?' + ts);
         const esmaMap = {};
         if (resEsma.ok) {
-            document.getElementById('time-esma').textContent = 'Eスマ: ' + formatFileDate(resEsma.headers.get('Last-Modified') || new Date());
+            document.getElementById('time-esma').textContent = 'Eスマ: ' + formatFileDate(resEsma.headers.get('Last-Modified'));
             const text = await resEsma.text();
             text.trim().split('\n').forEach(line => {
                 const c = line.split(',');
@@ -84,10 +98,9 @@ async function loadAndMergeAll() {
             });
         }
 
-        // --- 3. 最新在庫_data.csv (自分のリスト) の読み込み ---
         const resMy = await fetch('最新在庫_data.csv?' + ts);
         if (resMy.ok) {
-            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resMy.headers.get('Last-Modified') || new Date());
+            document.getElementById('time-my').textContent = '自分: ' + formatFileDate(resMy.headers.get('Last-Modified'));
         }
         const textMy = await resMy.text();
         const myLines = textMy.trim().split('\n');
@@ -103,7 +116,6 @@ async function loadAndMergeAll() {
         myLines.forEach(line => {
             const c = line.split(','); 
             if (c.length < 7) return;
-
             const id = c[6].trim();
             
             const rStock = rakutenMap[id];
@@ -118,7 +130,7 @@ async function loadAndMergeAll() {
                 esmaStr = `E長:${fmt(eData.stock).padStart(6)} P:${eData.prem.padStart(4)} `;
             }
 
-            const row = document.createElement('span');
+            const row = document.createElement('div'); // divに変更してホバーを安定化
             row.className = 'row';
             row.innerHTML = 
                 `${c[0].padStart(7)}株 ` + 
