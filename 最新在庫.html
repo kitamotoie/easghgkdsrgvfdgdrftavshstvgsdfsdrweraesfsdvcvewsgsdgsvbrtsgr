@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
     <meta name="referrer" content="no-referrer">
-    <title>在庫総合管理システム</title>
+    <title> </title>
     <style>
         body { 
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -36,8 +36,8 @@
     <div>
         <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%B2_cross_check.html" target="_blank" rel="noreferrer">ひチェック</a>
         <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BA_cross_check.html" target="_blank" rel="noreferrer">まチェック</a>
-        <a href="https://piyoch.com/news/" target="_blank" rel="noreferrer">ぴよの</a>
-        <a href="https://gokigen-life.tokyo/calendar/" target="_blank" rel="noreferrer">ごきカレ</a>
+        <a href="https://piyoch.com/news/" target="_blank" rel="noreferrer">ぴよ</a>
+        <a href="https://gokigen-life.tokyo/calendar/" target="_blank" rel="noreferrer">ごき</a>
     </div>
     <div class="update-info">
         <span id="time-my">自分: 不明</span>
@@ -130,7 +130,7 @@ async function loadAndMergeAll() {
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
-                let esmaStr = eData ? `E長:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
+                let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
 
                 const row = document.createElement('div');
                 row.className = 'row';
@@ -143,10 +143,10 @@ async function loadAndMergeAll() {
                     `</div>` + 
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">ｺｽﾄ</a>` +
-                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">Go</a>` +
-                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">歴</a>` +
+                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
+                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">過</a>` +
                         `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽</a>` +
-                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">kcom</a>` +
+                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽﾏ</a>` +
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">売残</a>` +
                     `</div>` +
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>`;
