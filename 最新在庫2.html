@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: monospace; font-size:16px; margin:0; }
+        header { background-color: #f8f8f8; padding: 5px 10px; border-bottom: 1px solid #ccc; }
+        header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; }
+        table { border-collapse: collapse; margin: 10px; width: 98%; }
+        td, th { padding: 4px 8px; border-bottom: 1px solid #eee; white-space: nowrap; }
+        .num { text-align: right; }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="..." target="_blank">ひチェック</a>
+        <a href="..." target="_blank">まチェック</a>
+        <span id="last-update"></span>
+    </header>
+
+    <table id="target-table">
+        <tbody id="table-body"></tbody>
+    </table>
+
+    <script>
+        async function loadLatest() {
+            const res = await fetch('最新在庫_data.csv?' + new Date().getTime()); // キャッシュ回避
+            const text = await res.text();
+            const rows = text.trim().split('\n');
+            const tbody = document.getElementById('table-body');
+
+            rows.forEach(line => {
+                const c = line.split(','); // カンマで分割
+                // c[0]:在庫, c[1]:株価, c[2]:希望, c[3]:評価, c[4]:単価, c[5]:コスト, c[6]:ID, c[7]:名
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="num">${c[0]}株</td>
+                    <td class="num">${c[1]}</td>
+                    <td class="num">${c[2]}</td>
+                    <td class="num">${Number(c[3]).toLocaleString()}</td>
+                    <td>@${c[4]}→${c[5]}</td>
+                    <td>
+                        <a href="https://torihikitoriko.com/zaiko-${c[6]}/" target="_blank">${c[6]}</a>
+                        <a href="https://96ut.com/stock/crosscost.php?code=${c[6]}" target="_blank">ｺｽﾄ</a>
+                        <a href="history.html?code=${c[6]}" target="_blank">歴</a>
+                    </td>
+                    <td>${c[7]}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        loadLatest();
+    </script>
+</body>
+</html>
