@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>在庫総合管理システム</title>
     <style>
-        /* 全体：16px、太字なし、等幅フォント */
         body { font-family: "Courier New", Consolas, monospace; font-size: 16px; margin: 0; background: #fff; color: #333; font-weight: normal; }
         header { background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 100; line-height: 1.6; }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 15px; }
@@ -12,19 +11,21 @@
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
         #output { white-space: pre; padding: 10px; line-height: 1.6; overflow-x: auto; }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1700px; font-weight: normal; }
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1700px; }
         .row:hover { background-color: #eef6ff; }
         
-        /* 各列の幅設定 */
-        .col-main { width: 620px; flex-shrink: 0; white-space: pre; padding-right: 30px; box-sizing: border-box; }
+        /* col-main: 540から580に微増。これで大きな数字が入っても「とりこリンク」を押し出しません */
+        .col-main { width: 580px; flex-shrink: 0; white-space: pre; padding-right: 15px; box-sizing: border-box; }
+        /* 銘柄名エリア */
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 15px; }
+        /* リンク集エリア */
         .col-links { width: 300px; flex-shrink: 0; }
-        .col-stock { width: 360px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
+        /* 在庫エリア：右端。少し幅を広げて16pxでも数値が余裕で収まるように調整 */
+        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
 
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; background-color: #fffae6; }
         
-        /* コードリンク：強調（背景・太字）をすべて削除 */
         .code-link { color: #0077cc; text-decoration: none; margin-right: 10px; display: inline-block; }
         .code-link:hover { text-decoration: underline; background-color: #fffae6; }
         .name-text { color: #000; }
