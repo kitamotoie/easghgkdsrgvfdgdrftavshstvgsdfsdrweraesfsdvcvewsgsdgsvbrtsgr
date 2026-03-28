@@ -2,21 +2,24 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    
     <title>在庫総合管理システム</title>
     <style>
         body { font-family: "Courier New", Consolas, monospace; font-size: 16px; margin: 0; background: #fff; color: #333; font-weight: normal; }
         header { background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 100; line-height: 1.6; }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 15px; }
         
-        .update-info { font-size: 12px; color: #555; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; font-weight: bold; }
-        .update-info span { border-left: 4px solid #0077cc; padding: 0 8px; background: #eee; white-space: nowrap; }
+        .update-info { font-size: 13px; color: #444; display: flex; flex-wrap: wrap; gap: 25px; margin-top: 8px; font-weight: bold; }
+        .update-info span { border-left: 4px solid #0077cc; padding-left: 8px; white-space: nowrap; }
+        .update-info span:not(:last-child)::after { content: " |"; color: #ccc; margin-left: 20px; }
 
         #output { white-space: pre; padding: 10px; line-height: 1.6; overflow-x: auto; }
         
         .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1550px; }
         .row:hover { background-color: #eef6ff; }
         
-        /* col-main: 465pxで数字の終わりとコード番号を密着させます */
         .col-main { width: 465px; flex-shrink: 0; white-space: pre; padding-right: 0px; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 300px; flex-shrink: 0; }
@@ -35,7 +38,7 @@
 <header>
     <div>
         <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%B2_cross_check.html" target="_blank">ひチェック</a>
-        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BE_cross_check.html" target="_blank">まチェック</a>
+        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BA_cross_check.html" target="_blank">まチェック</a>
         <a href="https://piyoch.com/news/" target="_blank">ぴよの</a>
         <a href="https://gokigen-life.tokyo/calendar/" target="_blank">ごきカレ</a>
     </div>
@@ -62,32 +65,32 @@ const getID = (str) => {
     return m ? m[0] : null;
 };
 
-// ヘッダーに更新日時をセットする共通関数
 function updateTimeLabel(res, elementId, label) {
     if (!res.ok) return;
     const lastMod = res.headers.get('Last-Modified');
     if (lastMod) {
         const d = new Date(lastMod);
         document.getElementById(elementId).textContent = `${label}: ${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+    } else {
+        document.getElementById(elementId).textContent = `${label}: 取得不可`;
     }
 }
 
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
-        // 3つのファイルを並列でfetch
+        const fetchOpt = { cache: 'no-store' };
+
         const [resR, resE, resM] = await Promise.all([
-            fetch('楽天定時在庫.CSV?' + ts),
-            fetch('MarginBrand.csv?' + ts),
-            fetch('最新在庫_data.csv?' + ts)
+            fetch('楽天定時在庫.CSV?' + ts, fetchOpt),
+            fetch('MarginBrand.csv?' + ts, fetchOpt),
+            fetch('最新在庫_data.csv?' + ts, fetchOpt)
         ]);
 
-        // 各ファイルの更新日時を表示
         updateTimeLabel(resR, 'time-rakuten', '楽天');
         updateTimeLabel(resE, 'time-esma', 'Eスマ');
         updateTimeLabel(resM, 'time-my', '自分');
 
-        // 内容の解析（Shift-JISとUTF-8を使い分け）
         const textR = resR.ok ? new TextDecoder('shift-jis').decode(await resR.arrayBuffer()) : null;
         const textE = resE.ok ? new TextDecoder('shift-jis').decode(await resE.arrayBuffer()) : null;
         const textMy = resM.ok ? await resM.text() : null;
@@ -140,19 +143,20 @@ async function loadAndMergeAll() {
 
                 const row = document.createElement('div');
                 row.className = 'row';
+                // 各リンクに rel="noreferrer" を個別に追加（念押し）
                 row.innerHTML = 
                     `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </div>` + 
                     `<div class="col-name" title="${c[7]}">` +
-                        `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" class="code-link">${id}</a>` +
+                        `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
                         `<span class="name-text">${c[7]}</span>` +
                     `</div>` + 
                     `<div class="col-links links">` +
-                        `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
-                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>` +
-                        `<a href='history.html?code=${id}' target='_blank'>歴</a>` +
-                        `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
-                        `<a href='kcom.html?code=${id}' target='_blank'>kcom</a>` +
-                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>` +
+                        `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">ｺｽﾄ</a>` +
+                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">Go</a>` +
+                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">歴</a>` +
+                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽</a>` +
+                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">kcom</a>` +
+                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">売残</a>` +
                     `</div>` +
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>`;
 
