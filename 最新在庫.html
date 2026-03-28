@@ -10,11 +10,18 @@
         .update-info { font-size: 11px; color: #555; display: block; margin-top: 5px; font-weight: bold; }
         .update-info span { margin-right: 20px; border-left: 4px solid #0077cc; padding-left: 6px; background: #eee; padding-right: 4px; }
         #output { white-space: pre; padding: 10px; line-height: 1.5; overflow-x: auto; }
-        .row { display: block; border-bottom: 1px solid #eee; padding: 2px 0; color: #333; }
+        
+        /* レイアウト用のスタイル */
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 2px 0; align-items: center; }
         .row:hover { background-color: #eef6ff; }
+        
+        .col-main { width: 460px; flex-shrink: 0; }
+        .col-links { width: 290px; flex-shrink: 0; }
+        .col-name { width: 350px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
+        .col-stock { width: 300px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 5px; } /* 楽天・Eスマ用 */
+
         .links a { color: #0077cc; text-decoration: none; margin-right: 8px; }
         .links a:hover { text-decoration: underline; background-color: #fffae6; }
-        .fixed-box { display: inline-block; white-space: pre; vertical-align: top; }
     </style>
 </head>
 <body>
@@ -35,12 +42,10 @@
 <div id="output">読み込み中...</div>
 
 <script>
-// 自分データ等の汎用カンマ付け（在庫以外に使用）
 const fmt = (val) => {
     if (val === undefined || val === null || String(val).trim() === "") return "";
     const cleanVal = String(val).replace(/,/g, '');
     const n = parseFloat(cleanVal);
-    // 数値ならカンマ付け、数値でなければ（「抽選中」など）そのまま返す
     return isNaN(n) ? val : n.toLocaleString();
 };
 
@@ -85,11 +90,9 @@ async function loadAndMergeAll() {
         if (textE) {
             textE.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                // c[0]:コード, c[2]:長期, c[3]:在庫, c[4]:プレ料
                 if (c.length >= 4 && c[2] && c[2].includes("長期")) {
                     const id = getID(c[0]);
                     if (id) {
-                        // 在庫(s)はカンマを消す。プレ料(p)はそのまま。
                         esmaMap[id] = {
                             s: c[3] ? c[3].trim().replace(/,/g, '') : "0", 
                             p: c[4] ? c[4].trim() : ""
@@ -118,23 +121,19 @@ async function loadAndMergeAll() {
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
 
+                // 在庫情報の組み立て
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
-                
                 let esmaStr = " ".repeat(19);
                 if (eData) {
-                    // Eスマ在庫はカンマなしで表示
-                    const sDisp = eData.s; 
-                    const pDisp = eData.p || "";
-                    esmaStr = `E長:${sDisp.padStart(7)} P:${pDisp.padStart(4)} `;
+                    esmaStr = `E長:${eData.s.padStart(7)} P:${(eData.p || "").padStart(4)} `;
                 }
 
+                // 行の作成
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<span class="fixed-box" style="width:460px;">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </span>` + 
-                    `<span class="fixed-box" style="width:100px;">${rakutenStr}</span>` + 
-                    `<span class="fixed-box" style="width:170px;">${esmaStr}</span>` + 
-                    `<span class="links" style="display:inline-block; width:290px;">` +
+                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${fmt(c[4]).padStart(4)}→${fmt(c[5]).padStart(5)} </div>` + 
+                    `<div class="col-links links">` +
                     `<a href='https://torihikitoriko.com/zaiko-${id}/#toc0c' target='_blank'>${id}</a>` +
                     `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank'>ｺｽﾄ</a>` +
                     `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank'>Go</a>` +
@@ -142,8 +141,10 @@ async function loadAndMergeAll() {
                     `<a href='history-raku.html?code=${id}' target='_blank'>楽</a>` +
                     `<a href='kcom.html?code=${id}' target='_blank'>kcom</a>` +
                     `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank'>売残</a>` +
-                    `</span>` +
-                    `<span>${c[7]}</span>`;
+                    `</div>` +
+                    `<div class="col-name" title="${c[7]}">${c[7]}</div>` + 
+                    `<div class="col-stock">${rakutenStr}${esmaStr}</div>`;
+
                 outputDiv.appendChild(row);
             });
         }
