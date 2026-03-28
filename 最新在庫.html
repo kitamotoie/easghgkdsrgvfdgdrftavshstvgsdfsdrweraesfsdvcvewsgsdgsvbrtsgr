@@ -7,9 +7,9 @@
     
     <title>在庫総合管理システム</title>
     <style>
-        /* フォントをシステム標準のゴシック体に修正 */
+        /* 数字の縦列を揃えるため、標準的な等幅フォントセットを指定 */
         body { 
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; 
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
             font-size: 16px; 
             margin: 0; 
             background: #fff; 
@@ -28,8 +28,8 @@
         .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1500px; }
         .row:hover { background-color: #eef6ff; }
         
-        /* フォント変更に合わせて幅を445pxに微調整（隙間を詰める） */
-        .col-main { width: 445px; flex-shrink: 0; white-space: pre; padding-right: 0px; box-sizing: border-box; }
+        /* 等幅フォントに合わせて幅を455pxに調整。これでコード番号と密着します */
+        .col-main { width: 455px; flex-shrink: 0; white-space: pre; padding-right: 0px; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 300px; flex-shrink: 0; }
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
