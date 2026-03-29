@@ -19,13 +19,13 @@
         .update-info span { border-left: 4px solid #0077cc; padding-left: 8px; white-space: nowrap; }
         .update-info span:not(:last-child)::after { content: " |"; color: #ccc; margin-left: 15px; }
         #output { padding: 10px; line-height: 1.6; overflow-x: auto; }
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1500px; }
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1700px; } /* 幅を少し拡張 */
         .row:hover { background-color: #eef6ff; }
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        .col-links { width: 300px; flex-shrink: 0; }
+        .col-links { width: 480px; flex-shrink: 0; } /* リンク追加に合わせて幅を拡張(300->480) */
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
-        .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
+        .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 14px; } /* 少しサイズ調整 */
         .code-link { color: #0077cc; text-decoration: none; margin-right: 8px; display: inline-block; font-weight: bold; }
         .name-text { color: #000; }
     </style>
@@ -56,7 +56,6 @@ const fmt = (val) => {
     return isNaN(n) ? val : n.toLocaleString();
 };
 
-// 単価用：カンマを除去してトリミングのみ行う関数
 const raw = (val) => {
     if (val === undefined || val === null) return "";
     return String(val).replace(/,/g, '').trim();
@@ -83,7 +82,6 @@ async function loadAndMergeAll() {
         const textE = resE.ok ? new TextDecoder('shift-jis').decode(await resE.arrayBuffer()) : "";
         const textMy = resM.ok ? await resM.text() : "";
 
-        // 1. 楽天データの解析
         const rakutenMap = {};
         textR.split(/\r?\n/).forEach(line => {
             const c = line.split(',');
@@ -96,7 +94,6 @@ async function loadAndMergeAll() {
             rakutenMap[id] = c[0].trim().replace(/,/g, '');
         });
 
-        // 2. Eスマデータの解析
         const esmaMap = {};
         textE.split(/\r?\n/).forEach(line => {
             const c = line.split(',');
@@ -111,7 +108,6 @@ async function loadAndMergeAll() {
             }
         });
 
-        // 3. 自分データの解析と出力
         if (textMy) {
             const outputDiv = document.getElementById('output');
             outputDiv.innerHTML = '';
@@ -134,7 +130,6 @@ async function loadAndMergeAll() {
 
                 const row = document.createElement('div');
                 row.className = 'row';
-                // c[4] と c[5] を fmt() から raw() に変更してカンマを抑制
                 row.innerHTML = 
                     `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${raw(c[4]).padStart(4)}→${raw(c[5]).padStart(5)} </div>` + 
                     `<div class="col-name" title="${c[7]}">` +
@@ -144,10 +139,11 @@ async function loadAndMergeAll() {
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">ｺｽﾄ</a>` +
                         `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
-                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">過</a>` +
-                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽</a>` +
+                        `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">NK取歴</a>` +
+                        `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SBI取歴</a>` +    
+                        `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽取歴</a>` +  
                         `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽﾏ</a>` +
-                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">売残</a>` +
+                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">売残</a>` +                                                                                                        
                     `</div>` +
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>`;
                 outputDiv.appendChild(row);
