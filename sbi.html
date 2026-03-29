@@ -2,16 +2,24 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SBI履歴</title>
+    <title>SBI履歴 - 修正版</title>
     <style>
         pre {
             font-family: "MS Gothic", "Osaka-Mono", monospace;
             line-height: 1.5;
             white-space: pre;
-            background-color: #f0f4f8; /* 少し色味を変えています */
+            background-color: #f0f4f8;
             padding: 15px;
             border: 1px solid #acc;
             overflow-x: auto;
+        }
+        #error-message {
+            color: red;
+            font-weight: bold;
+            background: #ffebeb;
+            padding: 10px;
+            display: none; /* エラー時のみ表示 */
+            margin-bottom: 10px;
         }
         #update-time {
             font-size: 0.8em;
@@ -22,6 +30,8 @@
 </head>
 <body>
 
+<div id="error-message"></div>
+
 <h2>
     <span id="title"></span>
     <span id="update-time"></span>
@@ -31,12 +41,21 @@
 <script>
 const params = new URLSearchParams(location.search);
 const code = params.get("code");
-document.getElementById("title").textContent = "SBI銘柄コード: " + (code ? code : "未指定");
+const targetCode = code ? code.trim() : "";
+document.getElementById("title").textContent = "SBI銘柄コード: " + (targetCode || "未指定");
+
+function showError(msg) {
+    const errDiv = document.getElementById("error-message");
+    errDiv.textContent = "【エラー】" + msg;
+    errDiv.style.display = "block";
+    document.getElementById("result").textContent = "停止しました。";
+}
 
 // SBI.CSV を読み込む
 fetch("SBI.CSV?t=" + new Date().getTime())
     .then(r => {
-        if (!r.ok) throw new Error("SBI.CSVが見つかりません");
+        if (!r.ok) throw new Error(`"SBI.CSV" が見つかりません。ファイル名が半角大文字であるか確認してください。 (Status: ${r.status})`);
+        
         const lastModified = r.headers.get("Last-Modified");
         if (lastModified) {
             const d = new Date(lastModified);
@@ -46,32 +65,36 @@ fetch("SBI.CSV?t=" + new Date().getTime())
         return r.arrayBuffer(); 
     })
     .then(buf => {
+        // Shift-JISでデコードを試みる
         const text = new TextDecoder("shift-jis").decode(buf);
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-        if (lines.length === 0) return;
-
-        // ヘッダー
-        const header = lines[0].split(",").map(h => h.trim());
         
-        // データ行
-        const dataRows = lines.slice(1)
-            .map(l => {
-                // カンマ区切り。引用符内のカンマを考慮し、前後の空白を除去
-                return l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(item => item.replace(/"/g, "").trim());
-            })
-            .filter(c => {
-                // SBIは銘柄コードが3列目（インデックス2）
-                return c[2] === code;
-            }); 
+        // 行分割（空行を除去）
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
+        if (lines.length === 0) throw new Error("CSVファイルが空です。");
 
-        const targetRows = [header, ...dataRows];
+        // ヘッダー解析
+        const header = lines[0].split(",").map(h => h.replace(/"/g, "").trim());
+        
+        // データ行の抽出
+        const dataRows = lines.slice(1).map(l => {
+            // カンマ区切り（引用符内を考慮）
+            return l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(item => {
+                return item.replace(/"/g, "").trim();
+            });
+        }).filter(c => {
+            // 銘柄コード（3列目 = index 2）を比較
+            // c[2]が存在し、かつ指定されたコードと一致するか
+            return c[2] && c[2] === targetCode;
+        });
 
         if (dataRows.length === 0) {
-            document.getElementById("result").textContent = header.join(" | ") + "\n(該当データなし)";
+            document.getElementById("result").textContent = header.join(" | ") + `\n\n(銘柄コード "${targetCode}" に一致するデータはありませんでした)`;
             return;
         }
 
-        // 文字幅計算
+        const targetRows = [header, ...dataRows];
+
+        // 文字幅計算用関数
         const getDisplayWidth = (str) => {
             let width = 0;
             for (let i = 0; i < str.length; i++) {
@@ -85,8 +108,12 @@ fetch("SBI.CSV?t=" + new Date().getTime())
             return width;
         };
 
-        const colWidths = header.map((_, i) => Math.max(...targetRows.map(row => getDisplayWidth(row[i] || ""))));
+        // 各列の最大幅を計算
+        const colWidths = header.map((_, i) => {
+            return Math.max(...targetRows.map(row => getDisplayWidth(row[i] || "")));
+        });
 
+        // テキスト整形
         const formatted = targetRows.map(row => {
             return row.map((val, i) => {
                 const s = val || "";
@@ -98,4 +125,9 @@ fetch("SBI.CSV?t=" + new Date().getTime())
         document.getElementById("result").textContent = formatted;
     })
     .catch(e => {
-        document.getElementById("result").textContent = "エラー: " + e.message;
+        showError(e.message);
+    });
+</script>
+
+</body>
+</html>
