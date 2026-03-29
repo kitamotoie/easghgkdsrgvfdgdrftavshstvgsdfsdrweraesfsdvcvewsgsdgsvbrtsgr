@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>楽天履歴</title>
+    <style>
+        pre {
+            font-family: "MS Gothic", "Osaka-Mono", monospace;
+            line-height: 1.5;
+            white-space: pre;
+            background-color: #fff5f5; /* 楽天風の薄い背景 */
+            padding: 15px;
+            border: 1px solid #ebcccc;
+            overflow-x: auto; /* 横に長いデータに対応 */
+        }
+        #update-time {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>
+    <span id="title"></span>
+    <span id="update-time"></span>
+</h2>
+<pre id="result">読み込み中...</pre>
+
+<script>
+const params = new URLSearchParams(location.search);
+const code = params.get("code");
+document.getElementById("title").textContent = "楽天銘柄コード: " + (code ? code : "未指定");
+
+// RAKUTEN.CSV を読み込む
+fetch("RAKUTEN.CSV?t=" + new Date().getTime())
+    .then(r => {
+        if (!r.ok) throw new Error("RAKUTEN.CSVが見つかりません");
+        const lastModified = r.headers.get("Last-Modified");
+        if (lastModified) {
+            const d = new Date(lastModified);
+            document.getElementById("update-time").textContent = 
+                `(更新: ${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")})`;
+        }
+        return r.arrayBuffer(); 
+    })
+    .then(buf => {
+        // 楽天証券のCSVは通常 Shift-JIS
+        const text = new TextDecoder("shift-jis").decode(buf);
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+        if (lines.length === 0) return;
+
+        // ヘッダー
+        const header = lines[0].split(",").map(h => h.trim());
+        
+        // データ行
+        const dataRows = lines.slice(1)
+            .map(l => {
+                // カンマ区切り（ダブルクォーテーション内のカンマを無視する正規表現）
+                // 楽天の "2,480.00" 形式に対応
+                return l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(item => {
+                    return item.replace(/"/g, "").trim();
+                });
+            })
+            .filter(c => {
+                // 楽天証券は銘柄コードが3列目（インデックス2）
+                return c[2] === code;
+            }); 
+
+        const targetRows = [header, ...dataRows];
+
+        if (dataRows.length === 0) {
+            document.getElementById("result").textContent = header.join(" | ") + "\n(該当データなし)";
+            return;
+        }
+
+        // 文字幅計算（全角2, 半角1）
+        const getDisplayWidth = (str) => {
+            let width = 0;
+            for (let i = 0; i < str.length; i++) {
+                const c = str.charCodeAt(i);
+                if ((c >= 0x0 && c < 0x81) || (c >= 0xff61 && c <= 0xff9f)) {
+                    width += 1;
+                } else {
+                    width += 2;
+                }
+            }
+            return width;
+        };
+
+        // 各列の最大幅を計算
+        const colWidths = header.map((_, i) => Math.max(...targetRows.map(row => getDisplayWidth(row[i] || ""))));
+
+        // 整形
+        const formatted = targetRows.map(row => {
+            return row.map((val, i) => {
+                const s = val || "";
+                const padSize = colWidths[i] - getDisplayWidth(s);
+                return s + " ".repeat(padSize);
+            }).join(" | ");
+        }).join("\n");
+
+        document.getElementById("result").textContent = formatted;
+    })
+    .catch(e => {
+        document.getElementById("result").textContent = "エラー: " + e.message;
+    });
+</script>
+
+</body>
+</html>
