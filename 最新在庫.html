@@ -19,13 +19,20 @@
         .update-info span { border-left: 4px solid #0077cc; padding-left: 8px; white-space: nowrap; }
         .update-info span:not(:last-child)::after { content: " |"; color: #ccc; margin-left: 15px; }
         #output { padding: 10px; line-height: 1.6; overflow-x: auto; }
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 1700px; } /* 幅を少し拡張 */
+        
+        /* 行のスタイル調整 */
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2100px; } 
         .row:hover { background-color: #eef6ff; }
+        
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        .col-links { width: 480px; flex-shrink: 0; } /* リンク追加に合わせて幅を拡張(300->480) */
+        .col-links { width: 320px; flex-shrink: 0; } /* 元の幅に戻しました */
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
-        .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 14px; } /* 少しサイズ調整 */
+        
+        /* 新設：完全に最後の列 */
+        .col-history { width: 320px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
+        
+        .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .code-link { color: #0077cc; text-decoration: none; margin-right: 8px; display: inline-block; font-weight: bold; }
         .name-text { color: #000; }
     </style>
@@ -139,13 +146,18 @@ async function loadAndMergeAll() {
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">ｺｽﾄ</a>` +
                         `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
+                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">取歴</a>` +
+                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽</a>` +
+                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽﾏ</a>` +
+                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">売残</a>` +
+                    `</div>` +
+                    `<div class="col-stock">${rakutenStr}${esmaStr}</div>` +
+                    /* 完全に最後の列として独立 */
+                    `<div class="col-history links">` +
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">NK取歴</a>` +
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SBI取歴</a>` +    
-                        `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽取歴</a>` +  
-                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽﾏ</a>` +
-                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">売残</a>` +                                                                                                        
-                    `</div>` +
-                    `<div class="col-stock">${rakutenStr}${esmaStr}</div>`;
+                        `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽取歴</a>` +
+                    `</div>`;
                 outputDiv.appendChild(row);
             });
         }
