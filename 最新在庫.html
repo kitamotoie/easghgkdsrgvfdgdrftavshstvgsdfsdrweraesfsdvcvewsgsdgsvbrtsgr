@@ -6,39 +6,27 @@
     <meta name="referrer" content="no-referrer">
     <title>Stock & History Dash</title>
     <style>
-        /* ページ全体のスクロールを禁止し、#output内だけでスクロールさせる */
         html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* 全体のスクロールを止める */
-            background: #fff;
+            height: 100%; margin: 0; padding: 0; overflow: hidden; background: #fff;
         }
         body { 
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
             font-size: 16px; color: #333;
         }
         header { 
             background-color: #f8f8f8; padding: 10px 15px; border-bottom: 1px solid #ccc; 
-            flex-shrink: 0; /* ヘッダーの高さは固定 */
-            z-index: 100; line-height: 1.6;
+            flex-shrink: 0; z-index: 100; line-height: 1.6;
         }
         header a { text-decoration: none; color: #0077cc; font-weight: bold; margin-right: 15px; font-size: 15px; }
         .update-info { font-size: 13px; color: #444; display: flex; flex-wrap: wrap; gap: 20px; margin-top: 8px; font-weight: bold; }
         .update-info span { border-left: 4px solid #0077cc; padding-left: 8px; white-space: nowrap; }
         .update-info span:not(:last-child)::after { content: " |"; color: #ccc; margin-left: 15px; }
         
-        /* ここが重要：表示領域を固定して、ここにスクロールバーを出す */
         #output { 
-            flex-grow: 1; 
-            overflow: auto; /* ここに横・縦両方のスクロールバーが出る */
-            padding: 10px; 
-            line-height: 1.6;
+            flex-grow: 1; overflow: auto; padding: 10px; line-height: 1.6;
         }
         
-        /* 行のスタイル */
         .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2200px; } 
         .row:hover { background-color: #eef6ff; }
         
@@ -127,8 +115,14 @@ async function loadAndMergeAll() {
                 document.getElementById('time-esma').textContent = `Eスマ: ${c[3].trim()}`;
                 return;
             }
-            if (c[2] && c[2].includes("長期")) {
-                esmaMap[id] = { s: c[3].trim().replace(/,/g, ''), p: c[4].trim() };
+            // 重要：インデックスの固定
+            // c[0]:コード, c[1]:名, c[2]:区分, c[3]:申込数, c[4]:在庫, c[5]:プレミアム
+            const stockVal = c[4] ? c[4].trim().replace(/,/g, '') : "0";
+            const premVal = c[5] ? c[5].trim() : "";
+            
+            // ヘッダー行（"新規売建..."など）を弾くため数値チェック
+            if (!isNaN(parseFloat(stockVal.replace(/[^0-9.]/g, '')))) {
+                esmaMap[id] = { s: stockVal, p: premVal };
             }
         });
 
@@ -137,28 +131,40 @@ async function loadAndMergeAll() {
             outputDiv.innerHTML = '';
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                if (c.length < 8) return; 
-                const id = getID(c[6]);
+                if (c.length < 5) return; 
+                
+                const id = getID(c[0]);
                 if (!id) return;
 
                 if (id === "ZZZZ") {
-                    const timeVal = c[7] ? c[7].trim() : "";
+                    const timeVal = c[7] ? c[7].trim() : (c[4] ? c[4].trim() : "");
                     if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
                     return; 
                 }
 
+                // 自分用データの取得
+                const myK   = c[3] || "0"; 
+                const myZ   = c[4] || "0"; 
+                const prem  = c[5] ? c[5].trim() : ""; 
+                const pStr = (prem && prem !== "0" && prem !== "0.00") ? ` P:${prem}` : "";
+
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
-                let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
+                
+                let esmaStr = " ".repeat(19);
+                if (eData) {
+                    const pVal = (eData.p && eData.p !== "0" && eData.p !== "0.00") ? ` P:${eData.p}` : "";
+                    esmaStr = `E:${eData.s.padStart(7)}${pVal.padEnd(7)}`;
+                }
 
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${raw(c[4]).padStart(4)}→${raw(c[5]).padStart(5)} </div>` + 
-                    `<div class="col-name" title="${c[7]}">` +
+                    `<div class="col-main">${fmt(myK).padStart(6)}株 在庫:${fmt(myZ).padStart(8)}${pStr.padEnd(8)} ${c[2].padStart(4)}</div>` + 
+                    `<div class="col-name" title="${c[1]}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
-                        `<span class="name-text">${c[7]}</span>` +
+                        `<span class="name-text">${c[1]}</span>` +
                     `</div>` + 
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
