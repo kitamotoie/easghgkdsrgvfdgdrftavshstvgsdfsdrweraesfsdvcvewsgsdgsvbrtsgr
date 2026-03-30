@@ -30,7 +30,7 @@
         .update-info span { border-left: 4px solid #0077cc; padding-left: 8px; white-space: nowrap; }
         .update-info span:not(:last-child)::after { content: " |"; color: #ccc; margin-left: 15px; }
         
-        /* 表示領域を固定して、ここにスクロールバーを出す */
+        /* ここが重要：表示領域を固定して、ここにスクロールバーを出す */
         #output { 
             flex-grow: 1; 
             overflow: auto; /* ここに横・縦両方のスクロールバーが出る */
@@ -127,14 +127,8 @@ async function loadAndMergeAll() {
                 document.getElementById('time-esma').textContent = `Eスマ: ${c[3].trim()}`;
                 return;
             }
-            
-            // c[4]: 新規売建可能数量(在庫株数量), c[5]: プレミアム料(想定)
-            const stock = c[4] ? c[4].trim().replace(/,/g, '') : "0";
-            const prem = c[5] ? c[5].trim() : "";
-            
-            // ヘッダー行をスキップ
-            if (!isNaN(parseFloat(stock.replace(/[^0-9.]/g, '')))) {
-                esmaMap[id] = { s: stock, p: prem };
+            if (c[2] && c[2].includes("長期")) {
+                esmaMap[id] = { s: c[3].trim().replace(/,/g, ''), p: c[4].trim() };
             }
         });
 
@@ -144,8 +138,7 @@ async function loadAndMergeAll() {
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 if (c.length < 8) return; 
-                
-                const id = getID(c[6]); // コードがc[6]にある場合
+                const id = getID(c[6]);
                 if (!id) return;
 
                 if (id === "ZZZZ") {
@@ -157,14 +150,7 @@ async function loadAndMergeAll() {
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
-                
-                // --- 修正箇所 ---
-                let esmaStr = " ".repeat(19);
-                if (eData) {
-                    const pVal = (eData.p && eData.p !== "0" && eData.p !== "0.00") ? ` P:${eData.p}` : "";
-                    esmaStr = `E:${eData.s.padStart(7)}${pVal.padEnd(7)}`;
-                }
-                // ---------------
+                let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
 
                 const row = document.createElement('div');
                 row.className = 'row';
@@ -187,7 +173,7 @@ async function loadAndMergeAll() {
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
                         `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
-                        `<a href='m-sbi.html?code=' target='_blank' rel="noreferrer">M-SB歴</a>` +
+                        `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
                     `</div>`;
                 outputDiv.appendChild(row);
             });
