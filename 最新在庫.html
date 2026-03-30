@@ -127,9 +127,11 @@ async function loadAndMergeAll() {
                 document.getElementById('time-esma').textContent = `Eスマ: ${c[3].trim()}`;
                 return;
             }
-            if (c[2] && c[2].includes("長期")) {
-                esmaMap[id] = { s: c[3].trim().replace(/,/g, ''), p: c[4].trim() };
-            }
+            // 在庫(c[4])とプレミアム想定(c[5])を保存
+            esmaMap[id] = { 
+                s: c[4] ? c[4].trim().replace(/,/g, '') : "0", 
+                p: c[5] ? c[5].trim() : "" 
+            };
         });
 
         if (textMy) {
@@ -137,28 +139,43 @@ async function loadAndMergeAll() {
             outputDiv.innerHTML = '';
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                if (c.length < 8) return; 
-                const id = getID(c[6]);
+                if (c.length < 5) return; 
+                
+                // 1列目がコード (c[0])
+                const id = getID(c[0]);
                 if (!id) return;
 
                 if (id === "ZZZZ") {
-                    const timeVal = c[7] ? c[7].trim() : "";
+                    const timeVal = c[7] ? c[7].trim() : (c[4] ? c[4].trim() : "");
                     if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
                     return; 
                 }
 
+                // 自社在庫データも同じ構造 (c[3]:保有, c[4]:在庫, c[5]:プレミアム)
+                const myK   = c[3] || "0"; 
+                const myZ   = c[4] || "0"; 
+                const prem  = c[5] ? c[5].trim() : ""; 
+
+                const pStr = (prem && prem !== "0" && prem !== "0.00") ? ` P:${prem}` : "";
+
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
-                let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
+                
+                // Eスマ表示：在庫(s)とプレミアム(p)
+                let esmaStr = " ".repeat(19);
+                if (eData) {
+                    const pVal = (eData.p && eData.p !== "0" && eData.p !== "0.00") ? ` P:${eData.p}` : "";
+                    esmaStr = `E:${eData.s.padStart(7)}${pVal.padEnd(7)}`;
+                }
 
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${raw(c[4]).padStart(4)}→${raw(c[5]).padStart(5)} </div>` + 
-                    `<div class="col-name" title="${c[7]}">` +
+                    `<div class="col-main">${fmt(myK).padStart(6)}株 在庫:${fmt(myZ).padStart(8)}${pStr.padEnd(8)} ${c[2].padStart(4)}</div>` + 
+                    `<div class="col-name" title="${c[1]}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
-                        `<span class="name-text">${c[7]}</span>` +
+                        `<span class="name-text">${c[1]}</span>` +
                     `</div>` + 
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
