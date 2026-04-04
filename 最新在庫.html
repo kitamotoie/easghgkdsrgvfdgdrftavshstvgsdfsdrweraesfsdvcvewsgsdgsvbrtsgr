@@ -43,8 +43,8 @@
         .col-links { width: 350px; flex-shrink: 0; }
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
-        /* 比率表示用（赤字を廃止） */
-        .col-ratio { width: 100px; flex-shrink: 0; padding-left: 15px; border-left: 1px solid #eee; }
+        /* 比率表示用 */
+        .col-ratio { width: 80px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -168,8 +168,7 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                // --- 比率計算ロジック修正 ---
-                // コストは c[5] (例の 886) を使用
+                // --- 比率計算ロジック ---
                 const cost = parseFloat(raw(c[5]));
                 const yutaiVal = getYutaiValue(c[7]);
                 let costRatioStr = "";
@@ -201,14 +200,15 @@ async function loadAndMergeAll() {
                         `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
+                    // --- 移動：在庫列の前に比率列を挿入 ---
+                    `<div class="col-ratio">${costRatioStr}</div>` +
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>` +
                     `<div class="col-history links">` +
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
                         `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
                         `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
-                    `</div>` +
-                    `<div class="col-ratio">${costRatioStr}</div>`;
+                    `</div>`;
                 outputDiv.appendChild(row);
             });
         }
