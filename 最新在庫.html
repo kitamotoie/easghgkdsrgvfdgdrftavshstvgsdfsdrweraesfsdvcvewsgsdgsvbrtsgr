@@ -35,7 +35,7 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2200px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2300px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -43,6 +43,8 @@
         .col-links { width: 350px; flex-shrink: 0; }
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
+        /* 追加：比率表示用 */
+        .col-ratio { width: 100px; flex-shrink: 0; font-weight: bold; color: #d32f2f; padding-left: 15px; border-left: 1px solid #eee; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -87,6 +89,13 @@ const getID = (str) => {
     return m ? m[0] : null;
 };
 
+// 名称から「優待価値XXXX」の数値を抜き出す関数
+const getYutaiValue = (str) => {
+    if (!str) return null;
+    const m = str.match(/優待価値(\d+)/);
+    return m ? parseFloat(m[1]) : null;
+};
+
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
@@ -120,27 +129,22 @@ async function loadAndMergeAll() {
             const id = getID(c[0]);
             if (!id) return;
 
-            // ZZZZ行（更新時刻）の処理: 列数に応じて取得場所を変える
             if (id === "ZZZZ") {
                 const timeStr = (c.length >= 8) ? c[7] : c[3];
                 if (timeStr) document.getElementById('time-esma').textContent = `Eスマ: ${timeStr.trim()}`;
                 return;
             }
 
-            // 列数による在庫抽出の分岐
             let stock = "";
             let premium = "";
             if (c.length >= 8) {
-                // 9時前フォーマット
                 stock = c[4];
                 premium = c[5];
             } else if (c.length >= 4) {
-                // 9時以降フォーマット
                 stock = c[3];
                 premium = c[4] || "";
             }
 
-            // 長期優先で格納（必要に応じてデイトレも判定可）
             if (c[2] && c[2].includes("長期")) {
                 esmaMap[id] = { 
                     s: stock ? stock.trim().replace(/,/g, '') : "0", 
@@ -163,6 +167,16 @@ async function loadAndMergeAll() {
                     if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
                     return; 
                 }
+
+                // --- 比率計算ロジック ---
+                const cost = parseFloat(raw(c[3]));
+                const yutaiVal = getYutaiValue(c[7]);
+                let costRatioStr = "";
+                if (cost && yutaiVal && yutaiVal !== 0) {
+                    const ratio = (cost / yutaiVal) * 100;
+                    costRatioStr = `${ratio.toFixed(1)}%`;
+                }
+                // -----------------------
 
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
@@ -191,7 +205,8 @@ async function loadAndMergeAll() {
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
                         `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
                         `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
-                    `</div>`;
+                    `</div>` +
+                    `<div class="col-ratio">${costRatioStr}</div>`;
                 outputDiv.appendChild(row);
             });
         }
