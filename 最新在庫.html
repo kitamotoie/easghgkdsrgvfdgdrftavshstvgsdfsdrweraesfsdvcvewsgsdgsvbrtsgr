@@ -35,7 +35,7 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2300px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2350px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -43,8 +43,8 @@
         .col-links { width: 350px; flex-shrink: 0; }
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
-        /* 比率表示用 */
-        .col-ratio { width: 80px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; }
+        /* 比率表示用 (コスト・利回り) 幅を少し調整 */
+        .col-ratio { width: 150px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -89,7 +89,6 @@ const getID = (str) => {
     return m ? m[0] : null;
 };
 
-// 名称から「優待価値XXXX」の数値を抜き出す関数
 const getYutaiValue = (str) => {
     if (!str) return null;
     const m = str.match(/優待価値(\d+)/);
@@ -168,16 +167,19 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                // --- 比率計算ロジック ---
-                const cost = parseFloat(raw(c[5]));
-                const yutaiVal = getYutaiValue(c[7]);
-                let costRatioStr = "";
+                // --- 計算ロジック（小数第2位固定） ---
+                const totalAmount = parseFloat(raw(c[3])); // 総額
+                const cost = parseFloat(raw(c[5]));        // コスト
+                const yutaiVal = getYutaiValue(c[7]);      // 優待価値
                 
-                if (!isNaN(cost) && yutaiVal && yutaiVal !== 0) {
-                    const ratio = (cost / yutaiVal) * 100;
-                    costRatioStr = `${ratio.toFixed(1)}%`;
+                let ratioInfo = "";
+                if (yutaiVal && yutaiVal !== 0) {
+                    // 両方とも toFixed(2) に変更
+                    const costRate = !isNaN(cost) ? (cost / yutaiVal * 100).toFixed(2) : "--";
+                    const yieldRate = !isNaN(totalAmount) && totalAmount !== 0 ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
+                    ratioInfo = `コ${costRate}% 利${yieldRate}%`;
                 }
-                // -----------------------
+                // -------------------
 
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
@@ -200,8 +202,7 @@ async function loadAndMergeAll() {
                         `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
-                    // --- 移動：在庫列の前に比率列を挿入 ---
-                    `<div class="col-ratio">${costRatioStr}</div>` +
+                    `<div class="col-ratio">${ratioInfo}</div>` +
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>` +
                     `<div class="col-history links">` +
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
