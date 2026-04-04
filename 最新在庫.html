@@ -43,8 +43,8 @@
         .col-links { width: 350px; flex-shrink: 0; }
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
-        /* 追加：比率表示用 */
-        .col-ratio { width: 100px; flex-shrink: 0; font-weight: bold; color: #d32f2f; padding-left: 15px; border-left: 1px solid #eee; }
+        /* 比率表示用（赤字を廃止） */
+        .col-ratio { width: 100px; flex-shrink: 0; padding-left: 15px; border-left: 1px solid #eee; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -168,11 +168,13 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                // --- 比率計算ロジック ---
-                const cost = parseFloat(raw(c[3]));
+                // --- 比率計算ロジック修正 ---
+                // コストは c[5] (例の 886) を使用
+                const cost = parseFloat(raw(c[5]));
                 const yutaiVal = getYutaiValue(c[7]);
                 let costRatioStr = "";
-                if (cost && yutaiVal && yutaiVal !== 0) {
+                
+                if (!isNaN(cost) && yutaiVal && yutaiVal !== 0) {
                     const ratio = (cost / yutaiVal) * 100;
                     costRatioStr = `${ratio.toFixed(1)}%`;
                 }
