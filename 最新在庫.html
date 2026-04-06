@@ -35,7 +35,7 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2450px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2550px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -44,15 +44,13 @@
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        /* 幅を200pxに維持 */
-        .col-ratio { width: 200px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        /* 利息表示分、幅を300pxに広げました */
+        .col-ratio { width: 300px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
         .code-link { color: #0077cc; text-decoration: none; margin-right: 8px; display: inline-block; font-weight: bold; }
         .name-text { color: #000; }
-        
-        /* 日数表示用 */
         .days-text { color: #333; margin-right: 8px; }
     </style>
 </head>
@@ -171,24 +169,34 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                // --- 1. 日数データの取得 (いじらない部分) ---
-                const daysVal = (c[8] && c[8].trim() !== "") ? c[8].trim() : "--";
-                const daysHtml = `<span class="days-text">${daysVal}日</span>`;
+                // --- 1. 日数データの取得 ---
+                const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
+                const daysNum = parseFloat(daysStr);
+                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
 
-                // --- 2. 元の計算ロジック (ここを以前の形に戻しました) ---
-                const totalAmount = parseFloat(raw(c[3]));
-                const cost = parseFloat(raw(c[5]));
-                const yutaiVal = getYutaiValue(c[7]);
+                // --- 2. 元の計算ロジック ---
+                const totalAmount = parseFloat(raw(c[3])); // 評価額
+                const cost = parseFloat(raw(c[5]));        // コスト
+                const yutaiVal = getYutaiValue(c[7]);      // 優待価値
                 
                 let ratioInfo = "";
+                let bankInterestDisp = "";
+
                 if (yutaiVal && yutaiVal !== 0) {
                     const costRate = !isNaN(cost) ? (cost / yutaiVal * 100).toFixed(2) : "--";
                     const yieldRate = !isNaN(totalAmount) && totalAmount !== 0 ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
                     ratioInfo = `コ${costRate}% 利${yieldRate}%`;
+                    
+                    // --- 3. 普通預金利息の算出 (★追加) ---
+                    // 式: 評価額 * 0.65% * (日数/365) * 税引(0.79685)
+                    if (!isNaN(totalAmount) && !isNaN(daysNum) && daysNum > 0) {
+                        const taxRate = 0.79685;
+                        const interest = Math.floor(totalAmount * 0.0065 * (daysNum / 365) * taxRate);
+                        bankInterestDisp = ` (預${interest}円)`;
+                    }
                 }
 
-                // --- 3. 日数を「コ」の前に結合するだけにする ---
-                const finalRatio = daysHtml + ratioInfo;
+                const finalRatio = daysHtml + ratioInfo + bankInterestDisp;
 
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
