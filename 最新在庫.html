@@ -44,7 +44,6 @@
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        /* 利息表示分、幅を300pxに広げました */
         .col-ratio { width: 300px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
@@ -169,34 +168,45 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                // --- 1. 日数データの取得 ---
+                // --- 1. 基本データの解析 ---
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
-                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
-
-                // --- 2. 元の計算ロジック ---
                 const totalAmount = parseFloat(raw(c[3])); // 評価額
-                const cost = parseFloat(raw(c[5]));        // コスト
-                const yutaiVal = getYutaiValue(c[7]);      // 優待価値
-                
-                let ratioInfo = "";
-                let bankInterestDisp = "";
+                const kibouSuu = parseFloat(raw(c[2]));   // 希望株数
+                const yutaiVal = getYutaiValue(c[7]);     // 優待価値
 
-                if (yutaiVal && yutaiVal !== 0) {
-                    const costRate = !isNaN(cost) ? (cost / yutaiVal * 100).toFixed(2) : "--";
-                    const yieldRate = !isNaN(totalAmount) && totalAmount !== 0 ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
-                    ratioInfo = `コ${costRate}% 利${yieldRate}%`;
+                // --- 2. 自力コスト計算 (日興基準) ---
+                // 買い: 制度3.27% (1日分) / 売り: 一般1.90% (日数分)
+                let myCostTotal = 0;
+                let myCostPer100 = 0;
+                if (!isNaN(totalAmount) && !isNaN(daysNum)) {
+                    const buyInterest = totalAmount * 0.0327 * (1 / 365);
+                    const sellInterest = totalAmount * 0.0190 * (daysNum / 365);
+                    myCostTotal = Math.ceil(buyInterest + sellInterest); // 切り上げ
                     
-                    // --- 3. 普通預金利息の算出 (★追加) ---
-                    // 式: 評価額 * 0.65% * (日数/365) * 税引(0.79685)
-                    if (!isNaN(totalAmount) && !isNaN(daysNum) && daysNum > 0) {
-                        const taxRate = 0.79685;
-                        const interest = Math.floor(totalAmount * 0.0065 * (daysNum / 365) * taxRate);
-                        bankInterestDisp = ` (預${interest}円)`;
+                    if (kibouSuu > 0) {
+                        myCostPer100 = Math.ceil(myCostTotal / (kibouSuu / 100));
                     }
                 }
 
+                // --- 3. 比率・利息計算 ---
+                let ratioInfo = "";
+                let bankInterestDisp = "";
+                if (yutaiVal && yutaiVal !== 0) {
+                    const costRate = (myCostTotal / yutaiVal * 100).toFixed(2);
+                    const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
+                    ratioInfo = `コ${costRate}% 利${yieldRate}%`;
+                    
+                    const taxRate = 0.79685;
+                    const bInterest = Math.floor(totalAmount * 0.0065 * (daysNum / 365) * taxRate);
+                    bankInterestDisp = ` (預${bInterest}円)`;
+                }
+
+                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
                 const finalRatio = daysHtml + ratioInfo + bankInterestDisp;
+
+                // --- 4. 表示用のコスト部分を自力計算値で上書き ---
+                const costDisplay = `@${String(myCostPer100).padStart(4)}→${String(myCostTotal).padStart(5)}`;
 
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
@@ -206,7 +216,7 @@ async function loadAndMergeAll() {
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${raw(c[4]).padStart(4)}→${raw(c[5]).padStart(5)} </div>` + 
+                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} ${costDisplay} </div>` + 
                     `<div class="col-name" title="${c[7]}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
                         `<span class="name-text">${c[7]}</span>` +
