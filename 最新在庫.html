@@ -35,21 +35,21 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2350px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2450px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        .col-links { width: 350px; flex-shrink: 0; }
+        .col-links { width: 420px; flex-shrink: 0; } /* 日数表示分、少し幅を広げました */
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
-        /* 比率表示用 (コスト・利回り) 幅を少し調整 */
         .col-ratio { width: 150px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
         .code-link { color: #0077cc; text-decoration: none; margin-right: 8px; display: inline-block; font-weight: bold; }
         .name-text { color: #000; }
+        .days-text { color: #666; font-size: 13px; margin-left: -5px; margin-right: 8px; }
     </style>
 </head>
 <body>
@@ -174,11 +174,13 @@ async function loadAndMergeAll() {
                 
                 let ratioInfo = "";
                 if (yutaiVal && yutaiVal !== 0) {
-                    // 両方とも toFixed(2) に変更
                     const costRate = !isNaN(cost) ? (cost / yutaiVal * 100).toFixed(2) : "--";
                     const yieldRate = !isNaN(totalAmount) && totalAmount !== 0 ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
                     ratioInfo = `コ${costRate}% 利${yieldRate}%`;
                 }
+
+                // --- 追加：金利日数（c[8]に入っていると想定） ---
+                const daysVal = (c[8] && c[8].trim() !== "") ? c[8].trim() : "--";
                 // -------------------
 
                 const rStock = rakutenMap[id];
@@ -201,6 +203,7 @@ async function loadAndMergeAll() {
                         `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a>` +
                         `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
+                        `<span class="days-text">(${daysVal}日)</span>` +
                     `</div>` +
                     `<div class="col-ratio">${ratioInfo}</div>` +
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>` +
