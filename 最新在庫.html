@@ -44,7 +44,7 @@
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        /* 日数表示を含むため、幅を200pxに調整 */
+        /* 幅を200pxに維持 */
         .col-ratio { width: 200px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
@@ -52,7 +52,7 @@
         .code-link { color: #0077cc; text-decoration: none; margin-right: 8px; display: inline-block; font-weight: bold; }
         .name-text { color: #000; }
         
-        /* 日数用の標準スタイル（強調なし） */
+        /* 日数表示用 */
         .days-text { color: #333; margin-right: 8px; }
     </style>
 </head>
@@ -171,25 +171,24 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                // --- 金利日数の取得 ---
+                // --- 1. 日数データの取得 (いじらない部分) ---
                 const daysVal = (c[8] && c[8].trim() !== "") ? c[8].trim() : "--";
+                const daysHtml = `<span class="days-text">${daysVal}日</span>`;
 
-                // --- 計算ロジック（小数第2位固定） ---
-                const totalAmount = parseFloat(raw(c[3])); // 総額
-                const cost = parseFloat(raw(c[5]));        // コスト
-                const yutaiVal = getYutaiValue(c[7]);      // 優待価値
+                // --- 2. 元の計算ロジック (ここを以前の形に戻しました) ---
+                const totalAmount = parseFloat(raw(c[3]));
+                const cost = parseFloat(raw(c[5]));
+                const yutaiVal = getYutaiValue(c[7]);
                 
                 let ratioInfo = "";
-                const daysHtml = `<span class="days-text">${daysVal}日</span>`;
-                
                 if (yutaiVal && yutaiVal !== 0) {
                     const costRate = !isNaN(cost) ? (cost / yutaiVal * 100).toFixed(2) : "--";
                     const yieldRate = !isNaN(totalAmount) && totalAmount !== 0 ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
-                    // ★日数を「コ」の前に配置
-                    ratioInfo = `${daysHtml} コ${costRate}% 利${yieldRate}%`;
-                } else {
-                    ratioInfo = `${daysHtml} (価値不明)`;
+                    ratioInfo = `コ${costRate}% 利${yieldRate}%`;
                 }
+
+                // --- 3. 日数を「コ」の前に結合するだけにする ---
+                const finalRatio = daysHtml + ratioInfo;
 
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
@@ -212,7 +211,7 @@ async function loadAndMergeAll() {
                         `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
-                    `<div class="col-ratio">${ratioInfo}</div>` +
+                    `<div class="col-ratio">${finalRatio}</div>` +
                     `<div class="col-stock">${rakutenStr}${esmaStr}</div>` +
                     `<div class="col-history links">` +
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
