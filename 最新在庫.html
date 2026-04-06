@@ -35,7 +35,7 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2550px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2650px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -44,7 +44,8 @@
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        .col-ratio { width: 300px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        /* 利益額の追加に伴い、幅を380pxに調整 */
+        .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -168,44 +169,45 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                // --- 1. 基本データの解析 ---
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
-                const totalAmount = parseFloat(raw(c[3])); // 評価額
-                const kibouSuu = parseFloat(raw(c[2]));   // 希望株数
-                const yutaiVal = getYutaiValue(c[7]);     // 優待価値
+                const totalAmount = parseFloat(raw(c[3]));
+                const kibouSuu = parseFloat(raw(c[2]));
+                const yutaiVal = getYutaiValue(c[7]);
 
-                // --- 2. 自力コスト計算 (日興基準) ---
-                // 買い: 制度3.27% (1日分) / 売り: 一般1.90% (日数分)
+                // 自力コスト計算
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum)) {
                     const buyInterest = totalAmount * 0.0327 * (1 / 365);
                     const sellInterest = totalAmount * 0.0190 * (daysNum / 365);
-                    myCostTotal = Math.ceil(buyInterest + sellInterest); // 切り上げ
-                    
+                    myCostTotal = Math.ceil(buyInterest + sellInterest);
                     if (kibouSuu > 0) {
                         myCostPer100 = Math.ceil(myCostTotal / (kibouSuu / 100));
                     }
                 }
 
-                // --- 3. 比率・利息計算 ---
                 let ratioInfo = "";
                 let bankInterestDisp = "";
+                let profitDisp = "";
+
                 if (yutaiVal && yutaiVal !== 0) {
                     const costRate = (myCostTotal / yutaiVal * 100).toFixed(2);
                     const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
                     ratioInfo = `コ${costRate}% 利${yieldRate}%`;
                     
+                    // 純利益計算 (価値 - 自力コスト)
+                    const netProfit = Math.floor(yutaiVal - myCostTotal);
+                    profitDisp = ` 利${netProfit}円`;
+
+                    // 預金利息
                     const taxRate = 0.79685;
                     const bInterest = Math.floor(totalAmount * 0.0065 * (daysNum / 365) * taxRate);
                     bankInterestDisp = ` (預${bInterest}円)`;
                 }
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
-                const finalRatio = daysHtml + ratioInfo + bankInterestDisp;
-
-                // --- 4. 表示用のコスト部分を自力計算値で上書き ---
+                const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
                 const costDisplay = `@${String(myCostPer100).padStart(4)}→${String(myCostTotal).padStart(5)}`;
 
                 const rStock = rakutenMap[id];
