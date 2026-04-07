@@ -159,16 +159,19 @@ async function loadAndMergeAll() {
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 
-                // --- 【修正箇所】getIDの前にZZZZを直接判定する ---
-                if (c[6] && c[6].trim() === "ZZZZ") {
-                    const timeVal = (c.length > 7) ? c[7].trim() : "";
-                    if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
+                // --- 【改善版】行のどこかにZZZZがあれば、その右隣を時刻として採用する ---
+                const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
+                if (zIndex !== -1) {
+                    const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
+                    if (timeVal) {
+                        document.getElementById('time-my').textContent = `自分: ${timeVal}`;
+                    }
                     return; 
                 }
 
+                // 通常のデータ処理
                 const id = getID(c[6]);
                 if (!id) return;
-
                 if (c.length < 8) return; 
 
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
