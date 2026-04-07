@@ -159,17 +159,15 @@ async function loadAndMergeAll() {
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 
-                // --- 【改善版】行のどこかにZZZZがあれば、その右隣を時刻として採用する ---
+                // --- 更新時刻の判定（ZZZZを探す） ---
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
-                    if (timeVal) {
-                        document.getElementById('time-my').textContent = `自分: ${timeVal}`;
-                    }
+                    if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
                     return; 
                 }
 
-                // 通常のデータ処理
+                // ID取得（c[6]にIDがある前提）
                 const id = getID(c[6]);
                 if (!id) return;
                 if (c.length < 8) return; 
@@ -177,19 +175,23 @@ async function loadAndMergeAll() {
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
                 const totalAmount = parseFloat(raw(c[3]));
-                const kibouSuu = parseFloat(raw(c[2]));
+                const kibouSuu = parseFloat(raw(c[2])); // 取得株数
                 const yutaiVal = getYutaiValue(c[7]);
 
+                // --- 【修正版】自力コスト計算（100株あたりの単価ベースで計算） ---
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
-                if (!isNaN(totalAmount) && !isNaN(daysNum)) {
-                 // 修正案 買方金利と貸株料は、それぞれ独立して 「1日ごとに円未満切り上げ」 されるのが一般的です。
-                const buyInterest = Math.ceil(totalAmount * 0.0327 / 365); // 1日分
-                const sellInterest = Math.ceil(totalAmount * 0.0190 * daysNum / 365); // 貸株期間分
-                myCostTotal = buyInterest + sellInterest;
-                    if (kibouSuu > 0) {
-                        myCostPer100 = Math.ceil(myCostTotal / (kibouSuu / 100));
-                    }
+                if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
+                    // 100株あたりの株価
+                    const pricePer100 = totalAmount / (kibouSuu / 100); 
+                    
+                    // 買方金利（100株1日分を切り上げ）
+                    const buy100 = Math.ceil(pricePer100 * 0.0327 / 365); 
+                    // 貸株料（100株指定期間分を切り上げ）
+                    const sell100 = Math.ceil(pricePer100 * 0.0190 * daysNum / 365); 
+                    
+                    myCostPer100 = buy100 + sell100; // 100株あたり単価コスト
+                    myCostTotal = myCostPer100 * (kibouSuu / 100); // 取得株数分の合計
                 }
 
                 let ratioInfo = "";
