@@ -44,7 +44,6 @@
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        /* 利益額の追加に伴い、幅を380pxに調整 */
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
@@ -159,15 +158,18 @@ async function loadAndMergeAll() {
             outputDiv.innerHTML = '';
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
-                if (c.length < 8) return; 
-                const id = getID(c[6]);
-                if (!id) return;
-
-                if (id === "ZZZZ") {
-                    const timeVal = c[7] ? c[7].trim() : "";
+                
+                // --- 【修正箇所】getIDの前にZZZZを直接判定する ---
+                if (c[6] && c[6].trim() === "ZZZZ") {
+                    const timeVal = (c.length > 7) ? c[7].trim() : "";
                     if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
                     return; 
                 }
+
+                const id = getID(c[6]);
+                if (!id) return;
+
+                if (c.length < 8) return; 
 
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
@@ -175,7 +177,6 @@ async function loadAndMergeAll() {
                 const kibouSuu = parseFloat(raw(c[2]));
                 const yutaiVal = getYutaiValue(c[7]);
 
-                // 自力コスト計算
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum)) {
@@ -196,11 +197,9 @@ async function loadAndMergeAll() {
                     const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
                     ratioInfo = `コ${costRate}% 利${yieldRate}%`;
                     
-                    // 純利益計算 (価値 - 自力コスト)
                     const netProfit = Math.floor(yutaiVal - myCostTotal);
                     profitDisp = ` 利${netProfit}円`;
 
-                    // 預金利息
                     const taxRate = 0.79685;
                     const bInterest = Math.floor(totalAmount * 0.0065 * (daysNum / 365) * taxRate);
                     bankInterestDisp = ` (預${bInterest}円)`;
