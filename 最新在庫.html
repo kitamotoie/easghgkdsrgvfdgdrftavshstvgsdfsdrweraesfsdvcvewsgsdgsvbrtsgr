@@ -183,9 +183,10 @@ async function loadAndMergeAll() {
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum)) {
-                    const buyInterest = totalAmount * 0.0327 * (1 / 365);
-                    const sellInterest = totalAmount * 0.0190 * (daysNum / 365);
-                    myCostTotal = Math.ceil(buyInterest + sellInterest);
+                 // 修正案 買方金利と貸株料は、それぞれ独立して 「1日ごとに円未満切り上げ」 されるのが一般的です。
+                const buyInterest = Math.ceil(totalAmount * 0.0327 / 365); // 1日分
+                const sellInterest = Math.ceil(totalAmount * 0.0190 * daysNum / 365); // 貸株期間分
+                myCostTotal = buyInterest + sellInterest;
                     if (kibouSuu > 0) {
                         myCostPer100 = Math.ceil(myCostTotal / (kibouSuu / 100));
                     }
