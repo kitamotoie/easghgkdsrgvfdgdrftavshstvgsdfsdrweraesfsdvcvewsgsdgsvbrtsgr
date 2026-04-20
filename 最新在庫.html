@@ -206,9 +206,13 @@ async function loadAndMergeAll() {
                     profitDisp = ` 利${netProfit}円`;
 
                     const taxRate = 0.79685;
-                    const bInterest = Math.floor(totalAmount * 0.0065 * (daysNum / 365) * taxRate);
-                    bankInterestDisp = ` (預${bInterest}円)`;
+                    // ★修正：(daysNum + 2) とし、ラベルを「預+2日」に変更
+                    const bInterest = Math.floor(totalAmount * 0.0065 * ((daysNum + 2) / 365) * taxRate);
+                    bankInterestDisp = ` (預+2日${bInterest}円)`;
                 }
+
+
+
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
                 const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
