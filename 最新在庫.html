@@ -159,7 +159,6 @@ async function loadAndMergeAll() {
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 
-                // ZZZZの判定
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
@@ -167,26 +166,22 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                const id = getID(c[6]);
+                const id = getID(c[0]); // 2593
                 if (!id) return;
-                if (c.length < 8) return; 
 
+                // 入力CSV構造に合わせて調整
+                const kibouSuu = parseFloat(raw(c[3])); // 5600
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
-                const totalAmount = parseFloat(raw(c[3]));
-                const kibouSuu = parseFloat(raw(c[2]));
-                const yutaiVal = getYutaiValue(c[7]);
+                const totalAmount = parseFloat(raw(c[4])); // 1000 (ダミー等。計算に必要)
+                const pValue = c[6] ? c[6].trim() : ""; // 0.29 (ここを取得)
+                const yutaiVal = getYutaiValue(c[1]); // 銘柄名(c[1])から取得
 
-                // --- 【ごきげんライフ完全一致ロジック】 ---
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
-                    // 100株あたりの単価
                     const price100 = totalAmount / (kibouSuu / 100); 
-                    
-                    // 買建金利（制度3.27%・1日分・切り捨て）
                     const buy100 = Math.floor(price100 * 0.0327 * 1 / 365);
-                    // 売建金利（一般1.9%・入力日数分・切り捨て）
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
                     
                     myCostPer100 = buy100 + sell100;
@@ -201,18 +196,12 @@ async function loadAndMergeAll() {
                     const costRate = (myCostTotal / yutaiVal * 100).toFixed(2);
                     const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
                     ratioInfo = `コ${costRate}% 利${yieldRate}%`;
-                    
                     const netProfit = Math.floor(yutaiVal - myCostTotal);
                     profitDisp = ` 利${netProfit}円`;
-
                     const taxRate = 0.79685;
-                    // ★修正：(daysNum + 1) とし、ラベルを「預+1日」に変更
                     const bInterest = Math.floor(totalAmount * 0.0065 * ((daysNum + 1) / 365) * taxRate);
                     bankInterestDisp = ` (預+1日${bInterest}円)`;
                 }
-
-
-
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
                 const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
@@ -221,15 +210,18 @@ async function loadAndMergeAll() {
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
-                let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
+                
+                // P: の部分を外部ファイル(eData.p)ではなく、今回の行のc[6]から優先的に出す
+                let displayP = pValue || (eData ? eData.p : "");
+                let esmaStr = `E:${(eData ? eData.s : "0").padStart(7)} P:${displayP.padStart(4)} `;
 
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} ${costDisplay} </div>` + 
-                    `<div class="col-name" title="${c[7]}">` +
+                    `<div class="col-main">${c[3].padStart(7)}株 ${fmt(c[4]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} ${costDisplay} </div>` + 
+                    `<div class="col-name" title="${c[1]}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
-                        `<span class="name-text">${c[7]}</span>` +
+                        `<span class="name-text">${c[1]}</span>` +
                     `</div>` + 
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
