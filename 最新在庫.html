@@ -123,32 +123,46 @@ async function loadAndMergeAll() {
             rakutenMap[id] = c[0].trim().replace(/,/g, '');
         });
 
+        // --- Eスマ(MarginBrand.csv) 解析セクション ---
         const esmaMap = {};
-        textE.split(/\r?\n/).forEach(line => {
+        const linesE = textE.split(/\r?\n/);
+        
+        // 列番号の初期値（通常時）
+        let sIdx = 3; // 在庫
+        let pIdx = 4; // プレミアム
+        let tIdx = 3; // ZZZZ時の時間列
+
+        if (linesE.length > 0) {
+            const header = linesE[0].split(',');
+            // 「申込数量」というヘッダーが含まれているか確認
+            if (header.some(h => h.includes("申込数量"))) {
+                sIdx = 4; // 在庫が5列目にずれる
+                pIdx = 6; // プレミアムが7列目にずれる
+                tIdx = 7; // ZZZZ時の時間もずれると想定
+            }
+        }
+
+        linesE.forEach((line, index) => {
             const c = line.split(',');
             const id = getID(c[0]);
             if (!id) return;
 
             if (id === "ZZZZ") {
-                const timeStr = (c.length >= 8) ? c[7] : c[3];
-                if (timeStr) document.getElementById('time-esma').textContent = `Eスマ: ${timeStr.trim()}`;
+                const timeStr = (c.length >= 8) ? c[tIdx + 4] : c[tIdx]; // 長期フラグ位置等により調整
+                // 既存ロジック互換のため、安全策として直接判定も残す
+                const finalTime = (c.length >= 8) ? c[7] : c[3];
+                if (finalTime) document.getElementById('time-esma').textContent = `Eスマ: ${finalTime.trim()}`;
                 return;
             }
 
-            let stock = "";
-            let premium = "";
-            if (c.length >= 8) {
-                stock = c[4];
-                premium = c[5];
-            } else if (c.length >= 4) {
-                stock = c[3];
-                premium = c[4] || "";
-            }
-
+            // 「長期」が含まれる行のみ対象
             if (c[2] && c[2].includes("長期")) {
+                let stock = c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0";
+                let premium = c[pIdx] ? c[pIdx].trim() : "";
+
                 esmaMap[id] = { 
-                    s: stock ? stock.trim().replace(/,/g, '') : "0", 
-                    p: premium ? premium.trim() : "" 
+                    s: stock, 
+                    p: premium 
                 };
             }
         });
@@ -181,14 +195,9 @@ async function loadAndMergeAll() {
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
-                    // 100株あたりの単価
                     const price100 = totalAmount / (kibouSuu / 100); 
-                    
-                    // 買建金利（制度3.27%・1日分・切り捨て）
                     const buy100 = Math.floor(price100 * 0.0327 * 1 / 365);
-                    // 売建金利（一般1.9%・入力日数分・切り捨て）
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
-                    
                     myCostPer100 = buy100 + sell100;
                     myCostTotal = myCostPer100 * (kibouSuu / 100);
                 }
@@ -206,13 +215,9 @@ async function loadAndMergeAll() {
                     profitDisp = ` 利${netProfit}円`;
 
                     const taxRate = 0.79685;
-                    // ★修正：(daysNum + 1) とし、ラベルを「預+1日」に変更
                     const bInterest = Math.floor(totalAmount * 0.0065 * ((daysNum + 1) / 365) * taxRate);
                     bankInterestDisp = ` (預+1日${bInterest}円)`;
                 }
-
-
-
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
                 const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
