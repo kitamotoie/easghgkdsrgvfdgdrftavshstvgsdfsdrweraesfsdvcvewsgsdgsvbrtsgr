@@ -35,7 +35,8 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2650px; } 
+        /* 成行必要額の表示列が追加されたため、全体の最小横幅を2650pxから2810pxへ拡張 */
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2810px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -45,6 +46,9 @@
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        
+        /* 成行必要額を表示する列のスタイル（色なし・文字サイズを揃えたもの） */
+        .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -72,6 +76,24 @@
 <div id="output">読み込み中...</div>
 
 <script>
+function getLimitWidth(price) {
+    if (price < 100) return 30;
+    if (price < 200) return 50;
+    if (price < 500) return 80;
+    if (price < 1000) return 100;
+    if (price < 1500) return 300;
+    if (price < 2000) return 400;
+    if (price < 3000) return 500;
+    if (price < 5000) return 700;
+    if (price < 7000) return 1000;
+    if (price < 10000) return 1500;
+    if (price < 15000) return 3000;
+    if (price < 20000) return 4000;
+    if (price < 30000) return 5000;
+    if (price < 50000) return 7000;
+    return 10000;
+}
+
 const fmt = (val) => {
     if (val === undefined || val === null || String(val).trim() === "") return "";
     const cleanVal = String(val).replace(/,/g, '');
@@ -228,6 +250,19 @@ async function loadAndMergeAll() {
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
                 let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
 
+                // --- 【成行発注用の口座必要資金 逆算ロジック（色なし）】 ---
+                let nariFundsHtml = "";
+                if (!isNaN(totalAmount) && kibouSuu > 0) {
+                    const basePrice = totalAmount / kibouSuu;
+                    const width = getLimitWidth(basePrice);
+                    const stopHighPrice = basePrice + width;
+                    const requiredCash = stopHighPrice * kibouSuu;
+                    
+                    nariFundsHtml = `<div class="col-nari"><span>成行:${requiredCash.toLocaleString()}円</span></div>`;
+                } else {
+                    nariFundsHtml = `<div class="col-nari"><span>-- 円</span></div>`;
+                }
+
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
@@ -251,7 +286,8 @@ async function loadAndMergeAll() {
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
                         `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
                         `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
-                    `</div>`;
+                    `</div>` +
+                    nariFundsHtml; // 画面の一番右端に追加
                 outputDiv.appendChild(row);
             });
         }
