@@ -35,34 +35,20 @@
             line-height: 1.6;
         }
         
-        /* すべての列の合計幅に合わせて最小横幅を「2150px」に最適化 */
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2150px; } 
+        /* 成行必要額の表示列が追加されたため、全体の最小横幅を2650pxから2810pxへ拡張 */
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2810px; } 
         .row:hover { background-color: #eef6ff; }
         
-        /* ========================================================
-           【各列の幅設定】
-           一番長いテキストが綺麗に収まり、縦ラインがピシッと揃う固定幅
-           ======================================================== */
-        /* 1. 株数やコスト表示（文字数が決まっているので455pxでジャスト） */
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
-        
-        /* 2. 銘柄コードと名前（長すぎる名前は自動で「...」にするため420pxを維持） */
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
+        .col-links { width: 350px; flex-shrink: 0; } 
+        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
+        .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        /* 3. 左側のリンク集（96コスト?96残 までがキッチリ収まる260pxに縮小） */
-        .col-links { width: 260px; flex-shrink: 0; } 
+        .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
-        /* 4. 利益やコストの計算結果（最長でも260pxあれば無駄なく収まります） */
-        .col-ratio { width: 260px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
-
-        /* 5. 楽天・Eスマ在庫（「楽:XXXXXX E:XXXXXX P:XX」がジャストで収まる260pxに縮小） */
-        .col-stock { width: 260px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
-        
-        /* 6. 右側の履歴リンク集（nk歴?M-SB歴 までがピッタリ収まる180pxに大幅縮小） */
-        .col-history { width: 180px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
-        
-        /* 7. 新設：成行必要額（「成行:12,345,678円」まで綺麗に収まる150px） */
-        .col-nari { width: 150px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        /* 成行必要額を表示する列のスタイル（色なし・文字サイズを揃えたもの） */
+        .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -163,16 +149,18 @@ async function loadAndMergeAll() {
         const esmaMap = {};
         const linesE = textE.split(/\r?\n/);
         
-        let sIdx = 3; 
-        let pIdx = 4; 
-        let tIdx = 3; 
+        // 列番号の初期値（通常時）
+        let sIdx = 3; // 在庫
+        let pIdx = 4; // プレミアム
+        let tIdx = 3; // ZZZZ時の時間列
 
         if (linesE.length > 0) {
             const header = linesE[0].split(',');
+            // 「申込数量」というヘッダーが含まれているか確認
             if (header.some(h => h.includes("申込数量"))) {
-                sIdx = 4; 
-                pIdx = 6; 
-                tIdx = 7; 
+                sIdx = 4; // 在庫が5列目にずれる
+                pIdx = 6; // プレミアムが7列目にずれる
+                tIdx = 7; // ZZZZ時の時間もずれると想定
             }
         }
 
@@ -182,12 +170,14 @@ async function loadAndMergeAll() {
             if (!id) return;
 
             if (id === "ZZZZ") {
-                const timeStr = (c.length >= 8) ? c[tIdx + 4] : c[tIdx];
+                const timeStr = (c.length >= 8) ? c[tIdx + 4] : c[tIdx]; // 長期フラグ位置等により調整
+                // 既存ロジック互換のため、安全策として直接判定も残す
                 const finalTime = (c.length >= 8) ? c[7] : c[3];
                 if (finalTime) document.getElementById('time-esma').textContent = `Eスマ: ${finalTime.trim()}`;
                 return;
             }
 
+            // 「長期」が含まれる行のみ対象
             if (c[2] && c[2].includes("長期")) {
                 let stock = c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0";
                 let premium = c[pIdx] ? c[pIdx].trim() : "";
@@ -205,6 +195,7 @@ async function loadAndMergeAll() {
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 
+                // ZZZZの判定
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
@@ -259,7 +250,7 @@ async function loadAndMergeAll() {
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
                 let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
 
-                // --- 【成行発注用の口座必要資金 逆算】 ---
+                // --- 【成行発注用の口座必要資金 逆算ロジック（色なし）】 ---
                 let nariFundsHtml = "";
                 if (!isNaN(totalAmount) && kibouSuu > 0) {
                     const basePrice = totalAmount / kibouSuu;
@@ -296,7 +287,7 @@ async function loadAndMergeAll() {
                         `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
                         `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
                     `</div>` +
-                    nariFundsHtml;
+                    nariFundsHtml; // 画面の一番右端に追加
                 outputDiv.appendChild(row);
             });
         }
