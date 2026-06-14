@@ -35,20 +35,19 @@
             line-height: 1.6;
         }
         
-        /* 成行必要額の表示列が追加されたため、全体の最小横幅を2650pxから2810pxへ拡張 */
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2810px; } 
+        /* 列幅が自動縮小するため、全体の最小横幅を中身が収まる最低限（約2000px）に調整 */
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2000px; } 
         .row:hover { background-color: #eef6ff; }
         
-        .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
+        /* 固定幅を廃止し、文字の最大長に自動フィット（左右に 10px ずつ余白） */
+        .col-main { width: max-content; padding-right: 10px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        .col-links { width: 350px; flex-shrink: 0; } 
-        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
-        .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
+        .col-links { width: max-content; padding-right: 15px; flex-shrink: 0; } 
         
-        .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
-        
-        /* 成行必要額を表示する列のスタイル（色なし・文字サイズを揃えたもの） */
-        .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        .col-stock { width: max-content; padding: 0 10px; flex-shrink: 0; background-color: #f9f9f9; border-left: 1px solid #ddd; }
+        .col-history { width: max-content; padding: 0 10px; flex-shrink: 0; background-color: #fffaf0; border-left: 1px solid #ddd; }
+        .col-ratio { width: max-content; padding: 0 10px; flex-shrink: 0; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        .col-nari { width: max-content; padding: 0 10px; flex-shrink: 0; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -170,14 +169,12 @@ async function loadAndMergeAll() {
             if (!id) return;
 
             if (id === "ZZZZ") {
-                const timeStr = (c.length >= 8) ? c[tIdx + 4] : c[tIdx]; // 長期フラグ位置等により調整
-                // 既存ロジック互換のため、安全策として直接判定も残す
+                const timeStr = (c.length >= 8) ? c[tIdx + 4] : c[tIdx];
                 const finalTime = (c.length >= 8) ? c[7] : c[3];
                 if (finalTime) document.getElementById('time-esma').textContent = `Eスマ: ${finalTime.trim()}`;
                 return;
             }
 
-            // 「長期」が含まれる行のみ対象
             if (c[2] && c[2].includes("長期")) {
                 let stock = c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0";
                 let premium = c[pIdx] ? c[pIdx].trim() : "";
@@ -195,7 +192,6 @@ async function loadAndMergeAll() {
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 
-                // ZZZZの判定
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
@@ -250,7 +246,7 @@ async function loadAndMergeAll() {
                 const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
                 let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
 
-                // --- 【成行発注用の口座必要資金 逆算ロジック（色なし）】 ---
+                // --- 【成行発注用の口座必要資金 逆算】 ---
                 let nariFundsHtml = "";
                 if (!isNaN(totalAmount) && kibouSuu > 0) {
                     const basePrice = totalAmount / kibouSuu;
@@ -284,10 +280,10 @@ async function loadAndMergeAll() {
                     `<div class="col-history links">` +
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
-                        `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
+                        `<a href='rakuten.html?code=%24%7Bid%7D' target='_blank' rel="noreferrer">楽歴</a>` +
                         `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
                     `</div>` +
-                    nariFundsHtml; // 画面の一番右端に追加
+                    nariFundsHtml;
                 outputDiv.appendChild(row);
             });
         }
