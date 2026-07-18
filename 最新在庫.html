@@ -228,22 +228,17 @@ async function loadAndMergeAll() {
                 let bankInterestDisp = "";
                 let profitDisp = "";
 
-　　　　　　　　if (yutaiVal && yutaiVal !== 0) {
+                if (yutaiVal && yutaiVal !== 0) {
                     const costRate = (myCostTotal / yutaiVal * 100).toFixed(2);
                     const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
-                    
-                    // 追加：金利1.1%用の計算
-                    const costRate2 = ((myCostTotal + (totalAmount * 0.011 * daysNum / 365)) / yutaiVal * 100).toFixed(2);
-                    const netProfit2 = Math.floor(yutaiVal - (myCostTotal + (totalAmount * 0.011 * daysNum / 365)));
-                    
-                    ratioInfo = `コ${costRate}% 利${yieldRate}% コ2${costRate2}% 利2${netProfit2}円`;
+                    ratioInfo = `コ${costRate}% 利${yieldRate}%`;
                     
                     const netProfit = Math.floor(yutaiVal - myCostTotal);
                     profitDisp = ` 利${netProfit}円`;
 
                     const taxRate = 0.79685;
                     const bInterest = Math.floor(totalAmount * 0.0075 * ((daysNum + 1) / 365) * taxRate);
-                    bankInterestDisp = ` (預${bInterest}円)`;
+                    bankInterestDisp = ` (預+1${bInterest}円)`;
                 }
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
