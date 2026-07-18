@@ -238,7 +238,7 @@ async function loadAndMergeAll() {
 
                     const taxRate = 0.79685;
                     const bInterest = Math.floor(totalAmount * 0.0075 * ((daysNum + 1) / 365) * taxRate);
-                    bankInterestDisp = ` (預+1${bInterest}円)`;
+                    bankInterestDisp = ` (預+1日${bInterest}円)`;
                 }
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
