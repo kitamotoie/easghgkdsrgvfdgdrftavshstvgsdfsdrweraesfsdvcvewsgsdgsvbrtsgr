@@ -218,7 +218,7 @@ async function loadAndMergeAll() {
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
                     const price100 = totalAmount / (kibouSuu / 100); 
-                    const buy100 = Math.floor(price100 * 0.0327 * 1 / 365);
+                    const buy100 = Math.floor(price100 * 0.0404 * 1 / 365);
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
                     myCostPer100 = buy100 + sell100;
                     myCostTotal = myCostPer100 * (kibouSuu / 100);
@@ -228,17 +228,22 @@ async function loadAndMergeAll() {
                 let bankInterestDisp = "";
                 let profitDisp = "";
 
-                if (yutaiVal && yutaiVal !== 0) {
+　　　　　　　　if (yutaiVal && yutaiVal !== 0) {
                     const costRate = (myCostTotal / yutaiVal * 100).toFixed(2);
                     const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
-                    ratioInfo = `コ${costRate}% 利${yieldRate}%`;
+                    
+                    // 追加：金利1.1%用の計算
+                    const costRate2 = ((myCostTotal + (totalAmount * 0.011 * daysNum / 365)) / yutaiVal * 100).toFixed(2);
+                    const netProfit2 = Math.floor(yutaiVal - (myCostTotal + (totalAmount * 0.011 * daysNum / 365)));
+                    
+                    ratioInfo = `コ${costRate}% 利${yieldRate}% コ2${costRate2}% 利2${netProfit2}円`;
                     
                     const netProfit = Math.floor(yutaiVal - myCostTotal);
                     profitDisp = ` 利${netProfit}円`;
 
                     const taxRate = 0.79685;
-                    const bInterest = Math.floor(totalAmount * 0.0065 * ((daysNum + 1) / 365) * taxRate);
-                    bankInterestDisp = ` (預+1日${bInterest}円)`;
+                    const bInterest = Math.floor(totalAmount * 0.0075 * ((daysNum + 1) / 365) * taxRate);
+                    bankInterestDisp = ` (預${bInterest}円)`;
                 }
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
