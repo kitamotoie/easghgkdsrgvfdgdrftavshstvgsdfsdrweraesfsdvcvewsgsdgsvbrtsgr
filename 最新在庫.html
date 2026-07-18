@@ -35,7 +35,8 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3000px; } 
+        /* 成行必要額の表示列が追加されたため、全体の最小横幅を2650pxから2810pxへ拡張 */
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2810px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -43,9 +44,11 @@
         .col-links { width: 350px; flex-shrink: 0; } 
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
+        
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        
+        /* 成行必要額を表示する列のスタイル（色なし・文字サイズを揃えたもの） */
         .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
-        .col-11 { width: 190px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; font-weight: bold; color: #d00; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -142,24 +145,47 @@ async function loadAndMergeAll() {
             rakutenMap[id] = c[0].trim().replace(/,/g, '');
         });
 
+        // --- Eスマ(MarginBrand.csv) 解析セクション ---
         const esmaMap = {};
         const linesE = textE.split(/\r?\n/);
-        let sIdx = 3; let pIdx = 4; let tIdx = 3;
+        
+        // 列番号の初期値（通常時）
+        let sIdx = 3; // 在庫
+        let pIdx = 4; // プレミアム
+        let tIdx = 3; // ZZZZ時の時間列
+
         if (linesE.length > 0) {
             const header = linesE[0].split(',');
-            if (header.some(h => h.includes("申込数量"))) { sIdx = 4; pIdx = 6; tIdx = 7; }
+            // 「申込数量」というヘッダーが含まれているか確認
+            if (header.some(h => h.includes("申込数量"))) {
+                sIdx = 4; // 在庫が5列目にずれる
+                pIdx = 6; // プレミアムが7列目にずれる
+                tIdx = 7; // ZZZZ時の時間もずれると想定
+            }
         }
-        linesE.forEach(line => {
+
+        linesE.forEach((line, index) => {
             const c = line.split(',');
             const id = getID(c[0]);
             if (!id) return;
+
             if (id === "ZZZZ") {
+                const timeStr = (c.length >= 8) ? c[tIdx + 4] : c[tIdx]; // 長期フラグ位置等により調整
+                // 既存ロジック互換のため、安全策として直接判定も残す
                 const finalTime = (c.length >= 8) ? c[7] : c[3];
                 if (finalTime) document.getElementById('time-esma').textContent = `Eスマ: ${finalTime.trim()}`;
                 return;
             }
+
+            // 「長期」が含まれる行のみ対象
             if (c[2] && c[2].includes("長期")) {
-                esmaMap[id] = { s: c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0", p: c[pIdx] ? c[pIdx].trim() : "" };
+                let stock = c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0";
+                let premium = c[pIdx] ? c[pIdx].trim() : "";
+
+                esmaMap[id] = { 
+                    s: stock, 
+                    p: premium 
+                };
             }
         });
 
@@ -168,6 +194,8 @@ async function loadAndMergeAll() {
             outputDiv.innerHTML = '';
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
+                
+                // ZZZZの判定
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
@@ -185,6 +213,7 @@ async function loadAndMergeAll() {
                 const kibouSuu = parseFloat(raw(c[2]));
                 const yutaiVal = getYutaiValue(c[7]);
 
+                // --- 【ごきげんライフ完全一致ロジック】 ---
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
@@ -203,30 +232,33 @@ async function loadAndMergeAll() {
                     const costRate = (myCostTotal / yutaiVal * 100).toFixed(2);
                     const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
                     ratioInfo = `コ${costRate}% 利${yieldRate}%`;
+                    
                     const netProfit = Math.floor(yutaiVal - myCostTotal);
                     profitDisp = ` 利${netProfit}円`;
+
                     const taxRate = 0.79685;
                     const bInterest = Math.floor(totalAmount * 0.0075 * ((daysNum + 1) / 365) * taxRate);
                     bankInterestDisp = ` (預+1日${bInterest}円)`;
                 }
 
+                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
+                const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
+                const costDisplay = `@${String(myCostPer100).padStart(4)}→${String(myCostTotal).padStart(5)}`;
+
                 const rStock = rakutenMap[id];
                 const eData = esmaMap[id];
-                let r11Html = "";
-                if (yutaiVal && (rStock !== undefined || eData)) {
-                    const interest11 = totalAmount * 0.011 * (daysNum / 365);
-                    const costRate11 = ((myCostTotal + interest11) / yutaiVal * 100).toFixed(1);
-                    const netProfit11 = Math.floor(yutaiVal - (myCostTotal + interest11));
-                    r11Html = `<div class="col-11">コ楽:${costRate11}% コ利:${netProfit11}円</div>`;
-                } else {
-                    r11Html = `<div class="col-11">--</div>`;
-                }
+                const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
+                let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
 
+                // --- 【成行発注用の口座必要資金 逆算ロジック（色なし）】 ---
                 let nariFundsHtml = "";
                 if (!isNaN(totalAmount) && kibouSuu > 0) {
                     const basePrice = totalAmount / kibouSuu;
-                    const stopHighPrice = basePrice + getLimitWidth(basePrice);
-                    nariFundsHtml = `<div class="col-nari"><span>成行:${(stopHighPrice * kibouSuu).toLocaleString()}円</span></div>`;
+                    const width = getLimitWidth(basePrice);
+                    const stopHighPrice = basePrice + width;
+                    const requiredCash = stopHighPrice * kibouSuu;
+                    
+                    nariFundsHtml = `<div class="col-nari"><span>成行:${requiredCash.toLocaleString()}円</span></div>`;
                 } else {
                     nariFundsHtml = `<div class="col-nari"><span>-- 円</span></div>`;
                 }
@@ -234,13 +266,28 @@ async function loadAndMergeAll() {
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} @${String(myCostPer100).padStart(4)}→${String(myCostTotal).padStart(5)} </div>` + 
-                    `<div class="col-name" title="${c[7]}"><a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a><span class="name-text">${c[7]}</span></div>` + 
-                    `<div class="col-links links"><a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a><a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a><a href='history.html?code=${id}' target='_blank' rel="noreferrer">nk存</a><a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a><a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a><a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a></div>` +
-                    `<div class="col-ratio"><span class="days-text">${daysStr}日</span>${ratioInfo}${profitDisp}${bankInterestDisp}</div>` +
-                    `<div class="col-stock">${rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10)}${eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19)}</div>` +
-                    `<div class="col-history links"><a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a><a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a><a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a><a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a></div>` +
-                    nariFundsHtml + r11Html;
+                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} ${costDisplay} </div>` + 
+                    `<div class="col-name" title="${c[7]}">` +
+                        `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
+                        `<span class="name-text">${c[7]}</span>` +
+                    `</div>` + 
+                    `<div class="col-links links">` +
+                        `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
+                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
+                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">nk存</a>` +
+                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a>` +
+                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
+                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
+                    `</div>` +
+                    `<div class="col-ratio">${finalRatio}</div>` +
+                    `<div class="col-stock">${rakutenStr}${esmaStr}</div>` +
+                    `<div class="col-history links">` +
+                        `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
+                        `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
+                        `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
+                        `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
+                    `</div>` +
+                    nariFundsHtml; // 画面の一番右端に追加
                 outputDiv.appendChild(row);
             });
         }
