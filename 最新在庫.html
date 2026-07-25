@@ -218,7 +218,7 @@ async function loadAndMergeAll() {
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
                     const price100 = totalAmount / (kibouSuu / 100); 
-                    const buy100 = Math.floor(price100 * 0.0404 * 1 / 365);
+                    const buy100 = Math.floor(price100 * 0.0354 * 1 / 365);
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
                     myCostPer100 = buy100 + sell100;
                     myCostTotal = myCostPer100 * (kibouSuu / 100);
