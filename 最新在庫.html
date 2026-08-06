@@ -145,35 +145,35 @@ async function loadAndMergeAll() {
             rakutenMap[id] = c[0].trim().replace(/,/g, '');
         });
 
-        // --- Eスマ(MarginBrand.csv) 解析セクション ---
+
+
+// --- Eスマ(MarginBrand.csv) 解析セクション ---
         const esmaMap = {};
         const linesE = textE.split(/\r?\n/);
         
-        // 列番号の初期値（通常時）
         let sIdx = 3; // 在庫
-        let pIdx = 4; // プレミアム
-        let tIdx = 3; // ZZZZ時の時間列
+        let pIdx = 4; // プレミアム料(想定)
 
         if (linesE.length > 0) {
             const header = linesE[0].split(',');
-            // 「申込数量」というヘッダーが含まれているか確認
+            // 「申込数量」が含まれる場合の自動列判定
             if (header.some(h => h.includes("申込数量"))) {
-                sIdx = 4; // 在庫が5列目にずれる
-                pIdx = 6; // プレミアムが7列目にずれる
-                tIdx = 7; // ZZZZ時の時間もずれると想定
+                sIdx = 4; // 在庫（5列目）
+                pIdx = 5; // プレミアム料想定（6列目）
             }
         }
 
-        linesE.forEach((line, index) => {
+        linesE.forEach((line) => {
             const c = line.split(',');
             const id = getID(c[0]);
             if (!id) return;
 
             if (id === "ZZZZ") {
-                const timeStr = (c.length >= 8) ? c[tIdx + 4] : c[tIdx]; // 長期フラグ位置等により調整
-                // 既存ロジック互換のため、安全策として直接判定も残す
-                const finalTime = (c.length >= 8) ? c[7] : c[3];
-                if (finalTime) document.getElementById('time-esma').textContent = `Eスマ: ${finalTime.trim()}`;
+                // ZZZZ行の最後の非空要素から更新時間を確実に取得
+                const finalTime = c.map(s => s.trim()).filter(Boolean).pop();
+                if (finalTime && finalTime !== "ZZZZ") {
+                    document.getElementById('time-esma').textContent = `Eスマ: ${finalTime}`;
+                }
                 return;
             }
 
@@ -188,6 +188,19 @@ async function loadAndMergeAll() {
                 };
             }
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         if (textMy) {
             const outputDiv = document.getElementById('output');
