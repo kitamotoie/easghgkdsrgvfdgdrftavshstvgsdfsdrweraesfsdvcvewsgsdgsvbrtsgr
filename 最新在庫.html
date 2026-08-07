@@ -41,7 +41,7 @@
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 350px; flex-shrink: 0; } 
-        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; font-family: monospace; }
+        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
@@ -179,12 +179,11 @@ async function loadAndMergeAll() {
 
             const k区分 = c[2] || "";
             
-            // 【重要】「デイトレ」は完全無視
+            // 「デイトレ」は無視
             if (k区分.includes("デイトレ")) {
                 return;
             }
 
-            // 「長期」または「無期限」等の長期枠のみ取得
             const actualStockIdx = sIdx !== -1 ? sIdx : (c.length > 5 ? 4 : 3);
             let stock = (actualStockIdx < c.length && c[actualStockIdx]) ? c[actualStockIdx].replace(/,/g, '') : "0";
             
