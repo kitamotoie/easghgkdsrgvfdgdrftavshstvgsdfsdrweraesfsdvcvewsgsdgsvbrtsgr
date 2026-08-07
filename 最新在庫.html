@@ -147,29 +147,29 @@ async function loadAndMergeAll() {
 
 
 
-// --- Eスマ(MarginBrand.csv) 解析セクション ---
+// --- Eスマ(MarginBrand.csv) 解析セクション（抽選時間中・終了後の両対応） ---
         const esmaMap = {};
         const linesE = textE.split(/\r?\n/);
         
-        let sIdx = 3; // 在庫デフォルト
-        let pIdx = 4; // プレミアム料デフォルト
+        let sIdx = 3;
+        let pIndices = [];
 
         if (linesE.length > 0) {
             const header = linesE[0].split(',').map(h => h.trim());
-            // ヘッダー行から「プレミアム」が含まれる列番号を自動検出
-            const foundPIdx = header.findIndex(h => h.includes("プレミアム") || h.includes("Ｐ料") || h.includes("P料"));
-            if (foundPIdx !== -1) {
-                pIdx = foundPIdx;
-            } else if (header.some(h => h.includes("申込数量"))) {
-                pIdx = 5;
+            
+            // 在庫列（新規売建可能数量）の動的判定
+            for (let i = 0; i < header.length; i++) {
+                if (header[i].includes("新規売建可能数量") || header[i].includes("在庫")) {
+                    sIdx = i;
+                    break;
+                }
             }
 
-            // 在庫列の自動判定
-            const foundSIdx = header.findIndex(h => h.includes("可能数量") || h.includes("在庫") || h.includes("申込数量"));
-            if (foundSIdx !== -1) {
-                sIdx = foundSIdx;
-            } else if (header.some(h => h.includes("申込数量"))) {
-                sIdx = 4;
+            // P料に関するすべての列インデックス（通常・想定・下限・上限）を抽出
+            for (let i = 0; i < header.length; i++) {
+                if (header[i].includes("プレミアム") || header[i].includes("Ｐ料") || header[i].includes("P料")) {
+                    pIndices.push(i);
+                }
             }
         }
 
@@ -189,13 +189,16 @@ async function loadAndMergeAll() {
 
             // 「長期」が含まれる行のみ対象
             if (c[2] && c[2].includes("長期")) {
-                let stock = c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0";
+                let stock = (sIdx < c.length && c[sIdx]) ? c[sIdx].trim().replace(/,/g, '') : "0";
                 
-                // pIdxの列、または fallbackで隣の列を検索して数値を取得
-                let rawP = c[pIdx] ? c[pIdx].trim() : "";
-                if (!rawP && c[pIdx + 1]) rawP = c[pIdx + 1].trim();
-                
-                let premium = rawP !== "" ? rawP : "0";
+                // P料候補列の中から値が入っているものを取得（想定・下限・上限のいずれも検知）
+                let premium = "";
+                for (let idx of pIndices) {
+                    if (idx < c.length && c[idx].trim() !== "") {
+                        premium = c[idx].trim();
+                        break;
+                    }
+                }
 
                 esmaMap[id] = { 
                     s: stock, 
