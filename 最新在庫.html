@@ -151,15 +151,25 @@ async function loadAndMergeAll() {
         const esmaMap = {};
         const linesE = textE.split(/\r?\n/);
         
-        let sIdx = 3; // 在庫
-        let pIdx = 4; // プレミアム料(想定)
+        let sIdx = 3; // 在庫デフォルト
+        let pIdx = 4; // プレミアム料デフォルト
 
         if (linesE.length > 0) {
-            const header = linesE[0].split(',');
-            // 「申込数量」が含まれる場合の自動列判定
-            if (header.some(h => h.includes("申込数量"))) {
-                sIdx = 4; // 在庫（5列目）
-                pIdx = 5; // プレミアム料想定（6列目）
+            const header = linesE[0].split(',').map(h => h.trim());
+            // ヘッダー行から「プレミアム」が含まれる列番号を自動検出
+            const foundPIdx = header.findIndex(h => h.includes("プレミアム") || h.includes("Ｐ料") || h.includes("P料"));
+            if (foundPIdx !== -1) {
+                pIdx = foundPIdx;
+            } else if (header.some(h => h.includes("申込数量"))) {
+                pIdx = 5;
+            }
+
+            // 在庫列の自動判定
+            const foundSIdx = header.findIndex(h => h.includes("可能数量") || h.includes("在庫") || h.includes("申込数量"));
+            if (foundSIdx !== -1) {
+                sIdx = foundSIdx;
+            } else if (header.some(h => h.includes("申込数量"))) {
+                sIdx = 4;
             }
         }
 
@@ -180,10 +190,12 @@ async function loadAndMergeAll() {
             // 「長期」が含まれる行のみ対象
             if (c[2] && c[2].includes("長期")) {
                 let stock = c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0";
-                let premium = c[pIdx] ? c[pIdx].trim() : "";
                 
-                // 空欄や取得不能時に「-」を表示して詰め込みズレを防ぐ補正
-                if (!premium) premium = "-";
+                // pIdxの列、または fallbackで隣の列を検索して数値を取得
+                let rawP = c[pIdx] ? c[pIdx].trim() : "";
+                if (!rawP && c[pIdx + 1]) rawP = c[pIdx + 1].trim();
+                
+                let premium = rawP !== "" ? rawP : "0";
 
                 esmaMap[id] = { 
                     s: stock, 
