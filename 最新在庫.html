@@ -40,9 +40,9 @@
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        .col-links { width: 350px; flex-shrink: 0; } 
+        .col-links { width: 80px; flex-shrink: 0; } 
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
-        .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
+        .col-history { width: 800px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
@@ -284,11 +284,6 @@ async function loadAndMergeAll() {
                     `</div>` + 
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
-                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
-                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">nk存</a>` +
-                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a>` +
-                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
-                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
                     `<div class="col-ratio">${finalRatio}</div>` +
                     `<div class="col-stock">${rakutenStr}  ${esmaStr}</div>` +
@@ -297,6 +292,11 @@ async function loadAndMergeAll() {
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
                         `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
                         `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
+                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
+                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">nk存</a>` +
+                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a>` +
+                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
+                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
                     nariFundsHtml;
                 outputDiv.appendChild(row);
