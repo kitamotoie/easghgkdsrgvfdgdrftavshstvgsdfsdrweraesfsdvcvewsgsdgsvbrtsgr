@@ -35,19 +35,16 @@
             line-height: 1.6;
         }
         
-        /* 成行必要額の表示列が追加されたため、全体の最小横幅を2650pxから2810pxへ拡張 */
         .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2810px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 455px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 350px; flex-shrink: 0; } 
-        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
+        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; font-family: monospace; }
         .col-history { width: 400px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
-        
-        /* 成行必要額を表示する列のスタイル（色なし・文字サイズを揃えたもの） */
         .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
@@ -133,6 +130,7 @@ async function loadAndMergeAll() {
         const textE = resE.ok ? new TextDecoder('shift-jis').decode(await resE.arrayBuffer()) : "";
         const textMy = resM.ok ? await resM.text() : "";
 
+        // --- 楽天CSV解析 ---
         const rakutenMap = {};
         textR.split(/\r?\n/).forEach(line => {
             const c = line.split(',');
@@ -145,28 +143,19 @@ async function loadAndMergeAll() {
             rakutenMap[id] = c[0].trim().replace(/,/g, '');
         });
 
-
-
-// --- Eスマ(MarginBrand.csv) 解析セクション（抽選時間中・終了後の両対応） ---
+        // --- Eスマ(MarginBrand.csv) 解析 ---
         const esmaMap = {};
         const linesE = textE.split(/\r?\n/);
         
-        let sIdx = 3;
+        let sIdx = -1;
         let pIndices = [];
 
         if (linesE.length > 0) {
             const header = linesE[0].split(',').map(h => h.trim());
-            
-            // 在庫列（新規売建可能数量）の動的判定
             for (let i = 0; i < header.length; i++) {
                 if (header[i].includes("新規売建可能数量") || header[i].includes("在庫")) {
                     sIdx = i;
-                    break;
                 }
-            }
-
-            // P料に関するすべての列インデックス（通常・想定・下限・上限）を抽出
-            for (let i = 0; i < header.length; i++) {
                 if (header[i].includes("プレミアム") || header[i].includes("Ｐ料") || header[i].includes("P料")) {
                     pIndices.push(i);
                 }
@@ -174,59 +163,53 @@ async function loadAndMergeAll() {
         }
 
         linesE.forEach((line) => {
-            const c = line.split(',');
+            const c = line.split(',').map(x => x.trim());
+            if (c.length < 3) return;
+
             const id = getID(c[0]);
             if (!id) return;
 
             if (id === "ZZZZ") {
-                // ZZZZ行の最後の非空要素から更新時間を確実に取得
-                const finalTime = c.map(s => s.trim()).filter(Boolean).pop();
+                const finalTime = c.filter(Boolean).pop();
                 if (finalTime && finalTime !== "ZZZZ") {
                     document.getElementById('time-esma').textContent = `Eスマ: ${finalTime}`;
                 }
                 return;
             }
 
-            // 「長期」が含まれる行のみ対象
-            if (c[2] && c[2].includes("長期")) {
-                let stock = (sIdx < c.length && c[sIdx]) ? c[sIdx].trim().replace(/,/g, '') : "0";
-                
-                // P料候補列の中から値が入っているものを取得（想定・下限・上限のいずれも検知）
-                let premium = "";
-                for (let idx of pIndices) {
-                    if (idx < c.length && c[idx].trim() !== "") {
-                        premium = c[idx].trim();
-                        break;
-                    }
-                }
-
-                esmaMap[id] = { 
-                    s: stock, 
-                    p: premium 
-                };
+            const k区分 = c[2] || "";
+            
+            // 【重要】「デイトレ」は完全無視
+            if (k区分.includes("デイトレ")) {
+                return;
             }
+
+            // 「長期」または「無期限」等の長期枠のみ取得
+            const actualStockIdx = sIdx !== -1 ? sIdx : (c.length > 5 ? 4 : 3);
+            let stock = (actualStockIdx < c.length && c[actualStockIdx]) ? c[actualStockIdx].replace(/,/g, '') : "0";
+            
+            let premium = "";
+            for (let idx of pIndices) {
+                if (idx < c.length && c[idx] !== "") {
+                    premium = c[idx];
+                    break;
+                }
+            }
+            if (!premium) premium = "0.00";
+
+            esmaMap[id] = { 
+                s: stock, 
+                p: premium 
+            };
         });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+        // --- 自分データ(最新在庫_data.csv)解析＆描画 ---
         if (textMy) {
             const outputDiv = document.getElementById('output');
             outputDiv.innerHTML = '';
             textMy.split(/\r?\n/).forEach(line => {
                 const c = line.split(',');
                 
-                // ZZZZの判定
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
@@ -244,7 +227,6 @@ async function loadAndMergeAll() {
                 const kibouSuu = parseFloat(raw(c[2]));
                 const yutaiVal = getYutaiValue(c[7]);
 
-                // --- 【ごきげんライフ完全一致ロジック】 ---
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
                 if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
@@ -276,19 +258,18 @@ async function loadAndMergeAll() {
                 const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
                 const costDisplay = `@${String(myCostPer100).padStart(4)}→${String(myCostTotal).padStart(5)}`;
 
-                const rStock = rakutenMap[id];
-                const eData = esmaMap[id];
-                const rakutenStr = rStock !== undefined ? `楽:${rStock.padStart(6)} ` : " ".repeat(10);
-                let esmaStr = eData ? `E:${eData.s.padStart(7)} P:${eData.p.padStart(4)} ` : " ".repeat(19);
+                const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
+                const eData = esmaMap[id] || { s: "0", p: "0.00" };
+                
+                const rakutenStr = `楽:${fmt(rStock).padStart(7)}`;
+                const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
 
-                // --- 【成行発注用の口座必要資金 逆算ロジック（色なし）】 ---
                 let nariFundsHtml = "";
                 if (!isNaN(totalAmount) && kibouSuu > 0) {
                     const basePrice = totalAmount / kibouSuu;
                     const width = getLimitWidth(basePrice);
                     const stopHighPrice = basePrice + width;
                     const requiredCash = stopHighPrice * kibouSuu;
-                    
                     nariFundsHtml = `<div class="col-nari"><span>成行:${requiredCash.toLocaleString()}円</span></div>`;
                 } else {
                     nariFundsHtml = `<div class="col-nari"><span>-- 円</span></div>`;
@@ -311,14 +292,14 @@ async function loadAndMergeAll() {
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
                     `<div class="col-ratio">${finalRatio}</div>` +
-                    `<div class="col-stock">${rakutenStr}${esmaStr}</div>` +
+                    `<div class="col-stock">${rakutenStr}  ${esmaStr}</div>` +
                     `<div class="col-history links">` +
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
                         `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
                         `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
                         `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
                     `</div>` +
-                    nariFundsHtml; // 画面の一番右端に追加
+                    nariFundsHtml;
                 outputDiv.appendChild(row);
             });
         }
