@@ -181,6 +181,9 @@ async function loadAndMergeAll() {
             if (c[2] && c[2].includes("長期")) {
                 let stock = c[sIdx] ? c[sIdx].trim().replace(/,/g, '') : "0";
                 let premium = c[pIdx] ? c[pIdx].trim() : "";
+                
+                // 空欄や取得不能時に「-」を表示して詰め込みズレを防ぐ補正
+                if (!premium) premium = "-";
 
                 esmaMap[id] = { 
                     s: stock, 
