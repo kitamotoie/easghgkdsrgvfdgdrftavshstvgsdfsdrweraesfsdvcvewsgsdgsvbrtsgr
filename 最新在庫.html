@@ -287,6 +287,7 @@ async function loadAndMergeAll() {
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
                     `<div class="col-stock">${rakutenStr}  ${esmaStr}</div>` +
+                    nariFundsHtml +
                     `<div class="col-ratio">${finalRatio}</div>` +
                     `<div class="col-history links">` +
                         `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
@@ -297,8 +298,7 @@ async function loadAndMergeAll() {
                         `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">nk存</a>` +
                         `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a>` +
                         `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
-                    `</div>` +
-                    nariFundsHtml;
+                    `</div>`;
                 outputDiv.appendChild(row);
             });
         }
