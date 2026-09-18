@@ -228,12 +228,22 @@ async function loadAndMergeAll() {
 
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
+                let myCostTotal_11 = 0;
+                let myCostPer100_11 = 0;
+
                 if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
                     const price100 = totalAmount / (kibouSuu / 100); 
                     const buy100 = Math.floor(price100 * 0.0354 * 1 / 365);
+                    
+                    // 日興 (1.9%)
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
                     myCostPer100 = buy100 + sell100;
                     myCostTotal = myCostPer100 * (kibouSuu / 100);
+
+                    // 他社 (1.1%)
+                    const sell100_11 = Math.floor(price100 * 0.0110 * daysNum / 365);
+                    myCostPer100_11 = buy100 + sell100_11;
+                    myCostTotal_11 = myCostPer100_11 * (kibouSuu / 100);
                 }
 
                 let ratioInfo = "";
@@ -255,7 +265,7 @@ async function loadAndMergeAll() {
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
                 const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
-                const costDisplay = `@${String(myCostPer100).padStart(4)}→${String(myCostTotal).padStart(5)}`;
+                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(myCostTotal).padStart(5)} (1.1%)${String(myCostPer100_11).padStart(3)}→${String(myCostTotal_11).padStart(5)}`;
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
