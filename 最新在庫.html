@@ -240,9 +240,9 @@ async function loadAndMergeAll() {
                     myCostPer100 = buy100 + sell100;
                     myCostTotal = myCostPer100 * (kibouSuu / 100);
 
-                    // 他社 (1.1%)
+                    // 他社 (1.1%) ※買い金利を含めない場合
                     const sell100_11 = Math.floor(price100 * 0.0110 * daysNum / 365);
-                    myCostPer100_11 = buy100 + sell100_11;
+                    myCostPer100_11 = sell100_11;
                     myCostTotal_11 = myCostPer100_11 * (kibouSuu / 100);
                 }
 
