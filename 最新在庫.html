@@ -35,10 +35,10 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 2950px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3030px; } 
         .row:hover { background-color: #eef6ff; }
         
-        .col-main { width: 600px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
+        .col-main { width: 680px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 110px; flex-shrink: 0; } 
         .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
@@ -265,13 +265,22 @@ async function loadAndMergeAll() {
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
                 const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
-                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(myCostTotal).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(myCostTotal_11).padStart(5)}`;
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
+
+                // P料計算 (P料 × 希望株数 × 日数)
+                let pDisp = "";
+                const pValue = parseFloat(eData.p);
+                if (!isNaN(pValue) && pValue > 0 && kibouSuu > 0 && !isNaN(daysNum) && daysNum > 0) {
+                    const totalP = Math.floor(pValue * kibouSuu * daysNum);
+                    pDisp = ` P:${totalP}`;
+                }
+
+                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(myCostTotal).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(myCostTotal_11).padStart(5)}${pDisp}`;
 
                 let nariFundsHtml = "";
                 if (!isNaN(totalAmount) && kibouSuu > 0) {
