@@ -41,7 +41,7 @@
         .col-main { width: 680px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 110px; flex-shrink: 0; } 
-        .col-stock { width: 380px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
+        .col-stock { width: 440px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 720px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
@@ -67,6 +67,7 @@
         <span id="time-my">自分: 不明</span>
         <span id="time-rakuten">楽天: 不明</span>
         <span id="time-esma">Eスマ: 不明</span>
+        <span id="time-sbi">SBI: 不明</span>
     </div>
 </header>
 
@@ -120,15 +121,17 @@ async function loadAndMergeAll() {
         const ts = new Date().getTime();
         const fetchOpt = { cache: 'no-store' };
 
-        const [resR, resE, resM] = await Promise.all([
+        const [resR, resE, resM, resS] = await Promise.all([
             fetch('楽天定時在庫.CSV?' + ts, fetchOpt),
             fetch('MarginBrand.csv?' + ts, fetchOpt),
-            fetch('最新在庫_data.csv?' + ts, fetchOpt)
+            fetch('最新在庫_data.csv?' + ts, fetchOpt),
+            fetch('最新在庫SBI.CSV?' + ts, fetchOpt)
         ]);
 
         const textR = resR.ok ? new TextDecoder('shift-jis').decode(await resR.arrayBuffer()) : "";
         const textE = resE.ok ? new TextDecoder('shift-jis').decode(await resE.arrayBuffer()) : "";
         const textMy = resM.ok ? await resM.text() : "";
+        const textS = resS.ok ? new TextDecoder('shift-jis').decode(await resS.arrayBuffer()) : "";
 
         // --- 楽天CSV解析 ---
         const rakutenMap = {};
@@ -142,6 +145,27 @@ async function loadAndMergeAll() {
             }
             rakutenMap[id] = c[0].trim().replace(/,/g, '');
         });
+
+        // --- SBI(最新在庫SBI.CSV) 解析 ---
+        const sbiMap = {};
+        if (textS) {
+            textS.split(/\r?\n/).forEach(line => {
+                const c = line.split(',');
+                if (c.length < 2) return;
+                const id = getID(c[0]);
+                if (!id) return;
+
+                if (id === "ZZZZ") {
+                    const timeVal = c[1] ? c[1].trim() : (c[2] ? c[2].trim() : "");
+                    if (timeVal) {
+                        document.getElementById('time-sbi').textContent = `SBI: ${timeVal}`;
+                    }
+                    return;
+                }
+
+                sbiMap[id] = c[1] ? c[1].trim() : "";
+            });
+        }
 
         // --- Eスマ(MarginBrand.csv) 解析 ---
         const esmaMap = {};
@@ -268,9 +292,11 @@ async function loadAndMergeAll() {
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
+                const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
                 
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
+                const sbiStr = `SBI:${sStock}`;
 
                 // P料計算 (P料 × 希望株数 × 日数)
                 let pDisp = "";
@@ -305,7 +331,7 @@ async function loadAndMergeAll() {
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
-                    `<div class="col-stock">${rakutenStr}  ${esmaStr}</div>` +
+                    `<div class="col-stock">${rakutenStr}  ${esmaStr} SBI:${sStock}</div>` +
                     nariFundsHtml +
                     `<div class="col-ratio">${finalRatio}</div>` +
                     `<div class="col-history links">` +
