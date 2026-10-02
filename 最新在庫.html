@@ -250,7 +250,7 @@ async function loadAndMergeAll() {
                 // 2列目（c[1]）：株価
                 const unitPrice = parseFloat(raw(c[1]));
 
-                // 3列目（c[2]）：指定株数（0なら100として計算、100以上ならそのまま）
+                // 3列目（c[2]）：指定株数（0または未入力の場合は100株扱いにする）
                 const rawKibouSuu = parseFloat(raw(c[2]));
                 const kibouSuu = (!isNaN(rawKibouSuu) && rawKibouSuu > 0) ? rawKibouSuu : 100;
 
@@ -307,7 +307,7 @@ async function loadAndMergeAll() {
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
                 const sbiStr = `SBI:${sStock}`;
 
-                // P料計算 (P料 × 希望株数 × 日数)
+                // P料計算 (P料 × 希望株数[0なら100] × 日数)
                 let pDisp = "";
                 const pValue = parseFloat(eData.p);
                 if (!isNaN(pValue) && pValue > 0 && !isNaN(daysNum) && daysNum > 0) {
