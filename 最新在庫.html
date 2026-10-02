@@ -35,10 +35,10 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3030px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3200px; } 
         .row:hover { background-color: #eef6ff; }
         
-        .col-main { width: 680px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
+        .col-main { width: 850px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 110px; flex-shrink: 0; } 
         .col-stock { width: 440px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
@@ -263,6 +263,8 @@ async function loadAndMergeAll() {
                 let myCostPer100 = 0;
                 let myCostTotal_11 = 0;
                 let myCostPer100_11 = 0;
+                let myCostTotal_sbi39 = 0;
+                let myCostPer100_sbi39 = 0;
 
                 if (!isNaN(unitPrice) && unitPrice > 0 && !isNaN(daysNum)) {
                     const price100 = unitPrice * 100; 
@@ -277,6 +279,11 @@ async function loadAndMergeAll() {
                     const sell100_11 = Math.floor(price100 * 0.0110 * daysNum / 365);
                     myCostPer100_11 = sell100_11;
                     myCostTotal_11 = myCostPer100_11 * (kibouSuu / 100);
+
+                    // SBI (3.9%) ※売り貸株料のみ(3.9%)
+                    const sell100_sbi39 = Math.floor(price100 * 0.0390 * daysNum / 365);
+                    myCostPer100_sbi39 = sell100_sbi39;
+                    myCostTotal_sbi39 = myCostPer100_sbi39 * (kibouSuu / 100);
                 }
 
                 let ratioInfo = "";
@@ -315,7 +322,7 @@ async function loadAndMergeAll() {
                     pDisp = ` P:${totalP}`;
                 }
 
-                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(Math.floor(myCostTotal)).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(Math.floor(myCostTotal_11)).padStart(5)}${pDisp}`;
+                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(Math.floor(myCostTotal)).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(Math.floor(myCostTotal_11)).padStart(5)}${pDisp} (S)@${String(myCostPer100_sbi39).padStart(3)}→${String(Math.floor(myCostTotal_sbi39)).padStart(5)}`;
 
                 let nariFundsHtml = "";
                 if (!isNaN(unitPrice) && unitPrice > 0) {
