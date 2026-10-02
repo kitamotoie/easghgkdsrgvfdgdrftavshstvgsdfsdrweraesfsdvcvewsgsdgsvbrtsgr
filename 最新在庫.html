@@ -247,7 +247,9 @@ async function loadAndMergeAll() {
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
                 const totalAmount = parseFloat(raw(c[3]));
-                const kibouSuu = parseFloat(raw(c[2]));
+                const rawKibouSuu = parseFloat(raw(c[2]));
+                // 指定株数が 0 または未定義の場合は 100株 扱いとして計算
+                const kibouSuu = (!isNaN(rawKibouSuu) && rawKibouSuu > 0) ? rawKibouSuu : 100;
                 const yutaiVal = getYutaiValue(c[7]);
 
                 let myCostTotal = 0;
@@ -255,7 +257,7 @@ async function loadAndMergeAll() {
                 let myCostTotal_11 = 0;
                 let myCostPer100_11 = 0;
 
-                if (!isNaN(totalAmount) && !isNaN(daysNum) && kibouSuu > 0) {
+                if (!isNaN(totalAmount) && !isNaN(daysNum)) {
                     const price100 = totalAmount / (kibouSuu / 100); 
                     const buy100 = Math.floor(price100 * 0.0354 * 1 / 365);
                     
@@ -301,7 +303,7 @@ async function loadAndMergeAll() {
                 // P料計算 (P料 × 希望株数 × 日数)
                 let pDisp = "";
                 const pValue = parseFloat(eData.p);
-                if (!isNaN(pValue) && pValue > 0 && kibouSuu > 0 && !isNaN(daysNum) && daysNum > 0) {
+                if (!isNaN(pValue) && pValue > 0 && !isNaN(daysNum) && daysNum > 0) {
                     const totalP = Math.floor(pValue * kibouSuu * daysNum);
                     pDisp = ` P:${totalP}`;
                 }
@@ -309,7 +311,7 @@ async function loadAndMergeAll() {
                 const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(myCostTotal).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(myCostTotal_11).padStart(5)}${pDisp}`;
 
                 let nariFundsHtml = "";
-                if (!isNaN(totalAmount) && kibouSuu > 0) {
+                if (!isNaN(totalAmount)) {
                     const basePrice = totalAmount / kibouSuu;
                     const width = getLimitWidth(basePrice);
                     const stopHighPrice = basePrice + width;
