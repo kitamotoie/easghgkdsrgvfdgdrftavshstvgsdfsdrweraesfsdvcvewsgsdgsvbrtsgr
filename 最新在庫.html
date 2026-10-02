@@ -246,10 +246,31 @@ async function loadAndMergeAll() {
 
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
-                const totalAmount = parseFloat(raw(c[3]));
-                const rawKibouSuu = parseFloat(raw(c[2]));
-                // 指定株数が 0 または未定義の場合は 100株 扱いとして計算
-                const kibouSuu = (!isNaN(rawKibouSuu) && rawKibouSuu > 0) ? rawKibouSuu : 100;
+
+                // CSVから値を取り出す
+                const origKibouSuu = parseFloat(raw(c[2])); // CSVに指定された本来の株数
+                const totalAmountRaw = parseFloat(raw(c[3])); // CSVの金額データ
+
+                // 計算用の株数：指定が0または入力なしなら100株扱い
+                const kibouSuu = (!isNaN(origKibouSuu) && origKibouSuu > 0) ? origKibouSuu : 100;
+
+                // 1株あたりの価格（ベースとなる単価）を正確に算出
+                let unitPrice = 0;
+                let totalAmount = 0;
+
+                if (!isNaN(totalAmountRaw)) {
+                    if (!isNaN(origKibouSuu) && origKibouSuu > 0) {
+                        // 本来の株数がある場合は総額から1株単価を算出
+                        unitPrice = totalAmountRaw / origKibouSuu;
+                    } else {
+                        // 株数指定が0の場合、c[1]の株価単価を見るか、c[3]から推測
+                        const stockPrice = parseFloat(raw(c[1]));
+                        unitPrice = !isNaN(stockPrice) && stockPrice > 0 ? stockPrice : (totalAmountRaw / 100);
+                    }
+                    // 計算対象の株数（kibouSuu）に応じた総金額
+                    totalAmount = unitPrice * kibouSuu;
+                }
+
                 const yutaiVal = getYutaiValue(c[7]);
 
                 let myCostTotal = 0;
@@ -257,8 +278,8 @@ async function loadAndMergeAll() {
                 let myCostTotal_11 = 0;
                 let myCostPer100_11 = 0;
 
-                if (!isNaN(totalAmount) && !isNaN(daysNum)) {
-                    const price100 = totalAmount / (kibouSuu / 100); 
+                if (unitPrice > 0 && !isNaN(daysNum)) {
+                    const price100 = unitPrice * 100; 
                     const buy100 = Math.floor(price100 * 0.0354 * 1 / 365);
                     
                     // 日興 (1.9%)
@@ -308,15 +329,14 @@ async function loadAndMergeAll() {
                     pDisp = ` P:${totalP}`;
                 }
 
-                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(myCostTotal).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(myCostTotal_11).padStart(5)}${pDisp}`;
+                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(Math.floor(myCostTotal)).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(Math.floor(myCostTotal_11)).padStart(5)}${pDisp}`;
 
                 let nariFundsHtml = "";
-                if (!isNaN(totalAmount)) {
-                    const basePrice = totalAmount / kibouSuu;
-                    const width = getLimitWidth(basePrice);
-                    const stopHighPrice = basePrice + width;
+                if (unitPrice > 0) {
+                    const width = getLimitWidth(unitPrice);
+                    const stopHighPrice = unitPrice + width;
                     const requiredCash = stopHighPrice * kibouSuu;
-                    nariFundsHtml = `<div class="col-nari"><span>成行:${requiredCash.toLocaleString()}円</span></div>`;
+                    nariFundsHtml = `<div class="col-nari"><span>成行:${Math.floor(requiredCash).toLocaleString()}円</span></div>`;
                 } else {
                     nariFundsHtml = `<div class="col-nari"><span>-- 円</span></div>`;
                 }
