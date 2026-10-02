@@ -247,29 +247,15 @@ async function loadAndMergeAll() {
                 const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
                 const daysNum = parseFloat(daysStr);
 
-                // CSVから値を取り出す
-                const origKibouSuu = parseFloat(raw(c[2])); // CSVに指定された本来の株数
-                const totalAmountRaw = parseFloat(raw(c[3])); // CSVの金額データ
+                // 2列目（c[1]）：株価
+                const unitPrice = parseFloat(raw(c[1]));
 
-                // 計算用の株数：指定が0または入力なしなら100株扱い
-                const kibouSuu = (!isNaN(origKibouSuu) && origKibouSuu > 0) ? origKibouSuu : 100;
+                // 3列目（c[2]）：指定株数（0なら100として計算、100以上ならそのまま）
+                const rawKibouSuu = parseFloat(raw(c[2]));
+                const kibouSuu = (!isNaN(rawKibouSuu) && rawKibouSuu > 0) ? rawKibouSuu : 100;
 
-                // 1株あたりの価格（ベースとなる単価）を正確に算出
-                let unitPrice = 0;
-                let totalAmount = 0;
-
-                if (!isNaN(totalAmountRaw)) {
-                    if (!isNaN(origKibouSuu) && origKibouSuu > 0) {
-                        // 本来の株数がある場合は総額から1株単価を算出
-                        unitPrice = totalAmountRaw / origKibouSuu;
-                    } else {
-                        // 株数指定が0の場合、c[1]の株価単価を見るか、c[3]から推測
-                        const stockPrice = parseFloat(raw(c[1]));
-                        unitPrice = !isNaN(stockPrice) && stockPrice > 0 ? stockPrice : (totalAmountRaw / 100);
-                    }
-                    // 計算対象の株数（kibouSuu）に応じた総金額
-                    totalAmount = unitPrice * kibouSuu;
-                }
+                // 株価 × 計算株数 で総取得額を算出
+                const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : parseFloat(raw(c[3]));
 
                 const yutaiVal = getYutaiValue(c[7]);
 
@@ -278,7 +264,7 @@ async function loadAndMergeAll() {
                 let myCostTotal_11 = 0;
                 let myCostPer100_11 = 0;
 
-                if (unitPrice > 0 && !isNaN(daysNum)) {
+                if (!isNaN(unitPrice) && unitPrice > 0 && !isNaN(daysNum)) {
                     const price100 = unitPrice * 100; 
                     const buy100 = Math.floor(price100 * 0.0354 * 1 / 365);
                     
@@ -332,7 +318,7 @@ async function loadAndMergeAll() {
                 const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(Math.floor(myCostTotal)).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(Math.floor(myCostTotal_11)).padStart(5)}${pDisp}`;
 
                 let nariFundsHtml = "";
-                if (unitPrice > 0) {
+                if (!isNaN(unitPrice) && unitPrice > 0) {
                     const width = getLimitWidth(unitPrice);
                     const stopHighPrice = unitPrice + width;
                     const requiredCash = stopHighPrice * kibouSuu;
