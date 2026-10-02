@@ -310,11 +310,11 @@ async function loadAndMergeAll() {
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
                 const sbiStr = `SBI:${sStock}`;
 
-                // P料計算 (P料 × 希望株数 × 日数)
+                // P料計算 (P料 × 100株扱い希望株数 × 日数)
                 let pDisp = "";
                 const pValue = parseFloat(eData.p);
                 if (!isNaN(pValue) && pValue > 0 && !isNaN(daysNum) && daysNum > 0) {
-                    const totalP = Math.floor(pValue * (isZeroSpecified ? 0 : kibouSuu) * daysNum);
+                    const totalP = Math.floor(pValue * kibouSuu * daysNum);
                     pDisp = ` P:${totalP}`;
                 }
 
