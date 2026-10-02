@@ -250,9 +250,12 @@ async function loadAndMergeAll() {
                 // 2列目（c[1]）：株価
                 const unitPrice = parseFloat(raw(c[1]));
 
-                // 3列目（c[2]）：指定株数（0なら100として計算、100以上ならそのまま）
+                // 3列目（c[2]）：指定株数
                 const rawKibouSuu = parseFloat(raw(c[2]));
-                const kibouSuu = (!isNaN(rawKibouSuu) && rawKibouSuu > 0) ? rawKibouSuu : 100;
+                const isZeroSpecified = (isNaN(rawKibouSuu) || rawKibouSuu === 0);
+                
+                // 単価や成行等の計算用株数：指定が0なら100株ベースで計算
+                const kibouSuu = !isZeroSpecified ? rawKibouSuu : 100;
 
                 // 株価 × 計算株数 で総取得額を算出
                 const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : parseFloat(raw(c[3]));
@@ -271,12 +274,12 @@ async function loadAndMergeAll() {
                     // 日興 (1.9%)
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
                     myCostPer100 = buy100 + sell100;
-                    myCostTotal = myCostPer100 * (kibouSuu / 100);
+                    myCostTotal = isZeroSpecified ? 0 : myCostPer100 * (kibouSuu / 100);
 
                     // 他社 (1.1%) ※買い金利を含めない場合
                     const sell100_11 = Math.floor(price100 * 0.0110 * daysNum / 365);
                     myCostPer100_11 = sell100_11;
-                    myCostTotal_11 = myCostPer100_11 * (kibouSuu / 100);
+                    myCostTotal_11 = isZeroSpecified ? 0 : myCostPer100_11 * (kibouSuu / 100);
                 }
 
                 let ratioInfo = "";
@@ -311,7 +314,7 @@ async function loadAndMergeAll() {
                 let pDisp = "";
                 const pValue = parseFloat(eData.p);
                 if (!isNaN(pValue) && pValue > 0 && !isNaN(daysNum) && daysNum > 0) {
-                    const totalP = Math.floor(pValue * kibouSuu * daysNum);
+                    const totalP = Math.floor(pValue * (isZeroSpecified ? 0 : kibouSuu) * daysNum);
                     pDisp = ` P:${totalP}`;
                 }
 
