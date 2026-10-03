@@ -209,8 +209,9 @@ async function loadAndMergeAll() {
                     return;
                 }
 
-                // 4列目（インデックス3）の在庫状況を取得
-                if (c.length >= 4) {
+                // 8列目（インデックス7: 短期）が存在し、空でない場合のみ保存（除外判定）
+                const shortTerm = c.length >= 8 ? c[7].trim() : "";
+                if (shortTerm !== "" && c.length >= 4) {
                     sbiAllMap[id] = c[3] ? c[3].trim() : "";
                 }
             });
