@@ -41,7 +41,7 @@
         .col-main { width: 850px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
         .col-name { width: 420px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .col-links { width: 110px; flex-shrink: 0; } 
-        .col-stock { width: 440px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
+        .col-stock { width: 540px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 720px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
         .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
@@ -68,6 +68,7 @@
         <span id="time-rakuten">楽天: 不明</span>
         <span id="time-esma">Eスマ: 不明</span>
         <span id="time-sbi">SBI: 不明</span>
+        <span id="time-sbi-all">SBI全体: 不明</span>
     </div>
 </header>
 
@@ -106,7 +107,7 @@ const raw = (val) => {
 
 const getID = (str) => {
     if (!str) return null;
-    const m = String(str).trim().match(/[0-9A-Z]{4}/);
+    const m = String(str).replace(/"/g, '').trim().match(/[0-9A-Z]{4}/);
     return m ? m[0] : null;
 };
 
@@ -116,22 +117,44 @@ const getYutaiValue = (str) => {
     return m ? parseFloat(m[1]) : null;
 };
 
+// CSVの1行をダブルクォート考慮してパースする補助関数
+const parseCsvLine = (line) => {
+    const result = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(cur.trim().replace(/^"|"$/g, ''));
+            cur = '';
+        } else {
+            cur += char;
+        }
+    }
+    result.push(cur.trim().replace(/^"|"$/g, ''));
+    return result;
+};
+
 async function loadAndMergeAll() {
     try {
         const ts = new Date().getTime();
         const fetchOpt = { cache: 'no-store' };
 
-        const [resR, resE, resM, resS] = await Promise.all([
+        const [resR, resE, resM, resS, resSAll] = await Promise.all([
             fetch('楽天定時在庫.CSV?' + ts, fetchOpt),
             fetch('MarginBrand.csv?' + ts, fetchOpt),
             fetch('最新在庫_data.csv?' + ts, fetchOpt),
-            fetch('最新在庫SBI.CSV?' + ts, fetchOpt)
+            fetch('最新在庫SBI.CSV?' + ts, fetchOpt),
+            fetch('%E6%9C%80%E6%96%B0%E5%9C%A8%E5%BA%ABSBI%E5%85%A8%E4%BD%93.CSV?' + ts, fetchOpt)
         ]);
 
         const textR = resR.ok ? new TextDecoder('shift-jis').decode(await resR.arrayBuffer()) : "";
         const textE = resE.ok ? new TextDecoder('shift-jis').decode(await resE.arrayBuffer()) : "";
         const textMy = resM.ok ? await resM.text() : "";
         const textS = resS.ok ? new TextDecoder('shift-jis').decode(await resS.arrayBuffer()) : "";
+        const textSAll = resSAll.ok ? new TextDecoder('shift-jis').decode(await resSAll.arrayBuffer()) : "";
 
         // --- 楽天CSV解析 ---
         const rakutenMap = {};
@@ -164,6 +187,32 @@ async function loadAndMergeAll() {
                 }
 
                 sbiMap[id] = c[1] ? c[1].trim() : "";
+            });
+        }
+
+        // --- SBI全体(最新在庫SBI全体.CSV) 解析 ---
+        const sbiAllMap = {};
+        if (textSAll) {
+            textSAll.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const c = parseCsvLine(line);
+                if (c.length < 1) return;
+
+                const id = getID(c[0]);
+                if (!id) return;
+
+                if (id === "ZZZZ") {
+                    const timeVal = c[1] ? c[1].trim() : (c[3] ? c[3].trim() : (c[2] ? c[2].trim() : ""));
+                    if (timeVal) {
+                        document.getElementById('time-sbi-all').textContent = `SBI全体: ${timeVal}`;
+                    }
+                    return;
+                }
+
+                // 4列目（インデックス3）の在庫状況を取得
+                if (c.length >= 4) {
+                    sbiAllMap[id] = c[3] ? c[3].trim() : "";
+                }
             });
         }
 
@@ -309,10 +358,11 @@ async function loadAndMergeAll() {
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
+                const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
-                const sbiStr = `SBI:${sStock}`;
+                const sbiStr = `SBI:${sStock}${sbiAllStatus}`;
 
                 // P料計算 (P料 × 希望株数[0なら100] × 日数)
                 let pDisp = "";
@@ -352,7 +402,7 @@ async function loadAndMergeAll() {
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
                         `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
                     `</div>` +
-                    `<div class="col-stock">${rakutenStr}  ${esmaStr} SBI:${sStock}</div>` +
+                    `<div class="col-stock">${rakutenStr}  ${esmaStr} ${sbiStr}</div>` +
                     nariFundsHtml +
                     `<div class="col-ratio">${finalRatio}</div>` +
                     `<div class="col-history links">` +
