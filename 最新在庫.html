@@ -142,12 +142,13 @@ async function loadAndMergeAll() {
         const ts = new Date().getTime();
         const fetchOpt = { cache: 'no-store' };
 
-        const [resR, resE, resM, resS, resSAll] = await Promise.all([
+        const [resR, resE, resM, resS, resSAll, resRNew] = await Promise.all([
             fetch('楽天定時在庫.CSV?' + ts, fetchOpt),
             fetch('MarginBrand.csv?' + ts, fetchOpt),
             fetch('最新在庫_data.csv?' + ts, fetchOpt),
             fetch('最新在庫SBI.CSV?' + ts, fetchOpt),
-            fetch('%E6%9C%80%E6%96%B0%E5%9C%A8%E5%BA%ABSBI%E5%85%A8%E4%BD%93.CSV?' + ts, fetchOpt)
+            fetch('%E6%9C%80%E6%96%B0%E5%9C%A8%E5%BA%ABSBI%E5%85%A8%E4%BD%93.CSV?' + ts, fetchOpt),
+            fetch('%E6%A5%BD%E5%A4%A9%E6%9C%80%E6%96%B0.CSV?' + ts, fetchOpt)
         ]);
 
         const textR = resR.ok ? new TextDecoder('shift-jis').decode(await resR.arrayBuffer()) : "";
@@ -155,6 +156,7 @@ async function loadAndMergeAll() {
         const textMy = resM.ok ? await resM.text() : "";
         const textS = resS.ok ? new TextDecoder('shift-jis').decode(await resS.arrayBuffer()) : "";
         const textSAll = resSAll.ok ? new TextDecoder('shift-jis').decode(await resSAll.arrayBuffer()) : "";
+        const textRNew = resRNew.ok ? new TextDecoder('shift-jis').decode(await resRNew.arrayBuffer()) : "";
 
         // --- 楽天CSV解析 ---
         const rakutenMap = {};
@@ -168,6 +170,25 @@ async function loadAndMergeAll() {
             }
             rakutenMap[id] = c[0].trim().replace(/,/g, '');
         });
+
+        // --- 楽天最新CSV解析 ---
+        const rakutenNewMap = {};
+        if (textRNew) {
+            textRNew.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const c = parseCsvLine(line);
+                if (c.length < 7) return;
+                const id = getID(c[1]);
+                if (!id) return;
+
+                const shortTerm = c[4] ? c[4].trim() : "";
+                const unlimitedTerm = c[5] ? c[5].trim() : "";
+
+                if (shortTerm === "○" || unlimitedTerm === "○") {
+                    rakutenNewMap[id] = c[6] ? c[6].trim().replace(/,/g, '') : "0";
+                }
+            });
+        }
 
         // --- SBI(最新在庫SBI.CSV) 解析 ---
         const sbiMap = {};
@@ -357,11 +378,12 @@ async function loadAndMergeAll() {
                 const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
+                const rNewStock = rakutenNewMap[id] !== undefined ? `(${fmt(rakutenNewMap[id])})` : "";
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
-                const rakutenStr = `楽:${fmt(rStock).padStart(7)}`;
+                const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
                 const sbiStr = `SBI:${sStock}${sbiAllStatus}`;
 
