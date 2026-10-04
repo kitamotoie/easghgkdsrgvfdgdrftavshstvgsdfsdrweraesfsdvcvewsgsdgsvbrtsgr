@@ -44,7 +44,7 @@
         .col-stock { width: 540px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 720px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        .col-ratio { width: 380px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        .col-ratio { width: 500px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
@@ -346,7 +346,7 @@ async function loadAndMergeAll() {
                     myCostPer100 = buy100 + sell100;
                     myCostTotal = myCostPer100 * (kibouSuu / 100);
 
-                    // 他社 (1.1%) ※買い金利を含めない場合
+                    // 他社 / Eスマ (1.1%) ※買い金利を含めない場合
                     const sell100_11 = Math.floor(price100 * 0.0110 * daysNum / 365);
                     myCostPer100_11 = sell100_11;
                     myCostTotal_11 = myCostPer100_11 * (kibouSuu / 100);
@@ -358,24 +358,23 @@ async function loadAndMergeAll() {
                 }
 
                 let ratioInfo = "";
-                let bankInterestDisp = "";
-                let profitDisp = "";
 
                 if (yutaiVal && yutaiVal !== 0) {
-                    const costRate = (myCostTotal / yutaiVal * 100).toFixed(2);
                     const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
-                    ratioInfo = `コ${costRate}% 利${yieldRate}%`;
                     
-                    const netProfit = Math.floor(yutaiVal - myCostTotal);
-                    profitDisp = ` 利${netProfit}円`;
+                    // 日興
+                    const costRateNikko = (myCostTotal / yutaiVal * 100).toFixed(2);
+                    const netProfitNikko = Math.floor(yutaiVal - myCostTotal);
 
-                    const taxRate = 0.79685;
-                    const bInterest = Math.floor(totalAmount * 0.0075 * ((daysNum + 1) / 365) * taxRate);
-                    bankInterestDisp = ` (預+1日${bInterest}円)`;
+                    // Eスマ (P料考慮せず)
+                    const costRateEsma = (myCostTotal_11 / yutaiVal * 100).toFixed(2);
+                    const netProfitEsma = Math.floor(yutaiVal - myCostTotal_11);
+
+                    ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円`;
                 }
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
-                const finalRatio = daysHtml + ratioInfo + profitDisp + bankInterestDisp;
+                const finalRatio = daysHtml + ratioInfo;
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
                 const rNewStock = rakutenNewMap[id] !== undefined ? `(${fmt(rakutenNewMap[id])})` : "";
