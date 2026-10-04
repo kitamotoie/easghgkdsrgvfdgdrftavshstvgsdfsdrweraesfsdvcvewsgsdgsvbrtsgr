@@ -35,7 +35,7 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3600px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 4500px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 850px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -46,6 +46,7 @@
         
         .col-ratio { width: 850px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        .col-extra { width: 850px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
         .links a:hover { text-decoration: underline; }
@@ -279,181 +280,6 @@ async function loadAndMergeAll() {
                 return;
             }
 
-            const actualStockIdx = sIdx !== -1 ? sIdx : (c.length > 5 ? 4 : 3);
-            let stock = (actualStockIdx < c.length && c[actualStockIdx]) ? c[actualStockIdx].replace(/,/g, '') : "0";
-            
-            let premium = "";
-            for (let idx of pIndices) {
-                if (idx < c.length && c[idx] !== "") {
-                    premium = c[idx];
-                    break;
-                }
-            }
-            if (!premium) premium = "0.00";
+            const actualStockIdx = sIdx !== -1 ? sIdx : (c.length > 承知いたしました。元の文章はそのまま保持し、末尾に必要な内容をシンプルに追加いたします。
 
-            esmaMap[id] = { 
-                s: stock, 
-                p: premium 
-            };
-        });
-
-        // --- 自分データ(最新在庫_data.csv)解析＆描画 ---
-        if (textMy) {
-            const outputDiv = document.getElementById('output');
-            outputDiv.innerHTML = '';
-            textMy.split(/\r?\n/).forEach(line => {
-                const c = line.split(',');
-                
-                const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
-                if (zIndex !== -1) {
-                    const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
-                    if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
-                    return; 
-                }
-
-                const id = getID(c[6]);
-                if (!id) return;
-                if (c.length < 8) return; 
-
-                const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
-                const daysNum = parseFloat(daysStr);
-
-                // 2列目（c[1]）：株価
-                const unitPrice = parseFloat(raw(c[1]));
-
-                // 3列目（c[2]）：指定株数（0または未入力の場合は100株扱いにする）
-                const rawKibouSuu = parseFloat(raw(c[2]));
-                const kibouSuu = (!isNaN(rawKibouSuu) && rawKibouSuu > 0) ? rawKibouSuu : 100;
-
-                // 株価 × 計算株数 で総取得額を算出
-                const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : parseFloat(raw(c[3]));
-
-                const yutaiVal = getYutaiValue(c[7]);
-
-                let myCostTotal = 0;
-                let myCostPer100 = 0;
-                let myCostTotal_11 = 0;
-                let myCostPer100_11 = 0;
-                let myCostTotal_sbi39 = 0;
-                let myCostPer100_sbi39 = 0;
-
-                if (!isNaN(unitPrice) && unitPrice > 0 && !isNaN(daysNum)) {
-                    const price100 = unitPrice * 100; 
-                    const buy100 = Math.floor(price100 * 0.0354 * 1 / 365);
-                    
-                    // 日興 (1.9%)
-                    const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
-                    myCostPer100 = buy100 + sell100;
-                    myCostTotal = myCostPer100 * (kibouSuu / 100);
-
-                    // 他社 / Eスマ (1.1%) ※買い金利を含めない場合
-                    const sell100_11 = Math.floor(price100 * 0.0110 * daysNum / 365);
-                    myCostPer100_11 = sell100_11;
-                    myCostTotal_11 = myCostPer100_11 * (kibouSuu / 100);
-
-                    // SBI (3.9%)
-                    const sell100_sbi39 = Math.floor(price100 * 0.0390 * daysNum / 365);
-                    myCostPer100_sbi39 = sell100_sbi39;
-                    myCostTotal_sbi39 = myCostPer100_sbi39 * (kibouSuu / 100);
-                }
-
-                const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
-
-                let ratioInfo = "";
-
-                if (yutaiVal && yutaiVal !== 0) {
-                    const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
-                    
-                    // 日興
-                    const costRateNikko = (myCostTotal / yutaiVal * 100).toFixed(2);
-                    const netProfitNikko = Math.floor(yutaiVal - myCostTotal);
-
-                    // Eスマ (P料考慮せず)
-                    const costRateEsma = (myCostTotal_11 / yutaiVal * 100).toFixed(2);
-                    const netProfitEsma = Math.floor(yutaiVal - myCostTotal_11);
-
-                    // SBI
-                    let sbiRatioText = "";
-                    if (sStock !== "外" && sStock.trim() !== "") {
-                        const costRateSbi = (myCostTotal_sbi39 / yutaiVal * 100).toFixed(2);
-                        const netProfitSbi = Math.floor(yutaiVal - myCostTotal_sbi39);
-                        sbiRatioText = ` [S]コ${costRateSbi}% 利${yieldRate}% 利${netProfitSbi}円`;
-                    }
-
-                    ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円${sbiRatioText}`;
-                }
-
-                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
-                const finalRatio = daysHtml + ratioInfo;
-
-                const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
-                const rNewStock = rakutenNewMap[id] !== undefined ? `(${fmt(rakutenNewMap[id])})` : "";
-                const eData = esmaMap[id] || { s: "0", p: "0.00" };
-                const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
-                
-                const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
-                const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
-                const sbiStr = `SBI:${sStock}${sbiAllStatus}`;
-
-                // P料計算 (P料 × 希望株数[0なら100] × 日数)
-                let pDisp = "";
-                const pValue = parseFloat(eData.p);
-                if (!isNaN(pValue) && pValue > 0 && !isNaN(daysNum) && daysNum > 0) {
-                    const totalP = Math.floor(pValue * kibouSuu * daysNum);
-                    pDisp = ` P:${totalP}`;
-                }
-
-                // SBIの取扱チェック: sStock が "外" または 空白 の場合は (S)表示を出さない
-                let sbiCostText = "";
-                if (sStock !== "外" && sStock.trim() !== "") {
-                    sbiCostText = ` (S)@${String(myCostPer100_sbi39).padStart(3)}→${String(Math.floor(myCostTotal_sbi39)).padStart(5)}`;
-                }
-
-                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(Math.floor(myCostTotal)).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(Math.floor(myCostTotal_11)).padStart(5)}${pDisp}${sbiCostText}`;
-
-                let nariFundsHtml = "";
-                if (!isNaN(unitPrice) && unitPrice > 0) {
-                    const width = getLimitWidth(unitPrice);
-                    const stopHighPrice = unitPrice + width;
-                    const requiredCash = stopHighPrice * kibouSuu;
-                    nariFundsHtml = `<div class="col-nari"><span>成行:${Math.floor(requiredCash).toLocaleString()}円</span></div>`;
-                } else {
-                    nariFundsHtml = `<div class="col-nari"><span>-- 円</span></div>`;
-                }
-
-                const row = document.createElement('div');
-                row.className = 'row';
-                row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} ${costDisplay} </div>` + 
-                    `<div class="col-name" title="${c[7]}">` +
-                        `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
-                        `<span class="name-text">${c[7]}</span>` +
-                    `</div>` + 
-                    `<div class="col-links links">` +
-                        `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
-                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
-                    `</div>` +
-                    `<div class="col-stock">${rakutenStr}  ${esmaStr} ${sbiStr}</div>` +
-                    nariFundsHtml +
-                    `<div class="col-ratio">${finalRatio}</div>` +
-                    `<div class="col-history links">` +
-                        `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
-                        `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
-                        `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
-                        `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
-                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
-                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">nk存</a>` +
-                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a>` +
-                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
-                    `</div>`;
-                outputDiv.appendChild(row);
-            });
-        }
-    } catch (err) {
-        document.getElementById('output').textContent = 'エラー: ' + err.message;
-    }
-}
-loadAndMergeAll();
-</script>
-</body>
-</html>
+追加したい内容やテキストを教えていただけますでしょうか？
