@@ -35,7 +35,7 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3200px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3400px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 850px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -44,7 +44,7 @@
         .col-stock { width: 540px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 720px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        .col-ratio { width: 500px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        .col-ratio { width: 680px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
@@ -357,6 +357,8 @@ async function loadAndMergeAll() {
                     myCostTotal_sbi39 = myCostPer100_sbi39 * (kibouSuu / 100);
                 }
 
+                const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
+
                 let ratioInfo = "";
 
                 if (yutaiVal && yutaiVal !== 0) {
@@ -370,7 +372,15 @@ async function loadAndMergeAll() {
                     const costRateEsma = (myCostTotal_11 / yutaiVal * 100).toFixed(2);
                     const netProfitEsma = Math.floor(yutaiVal - myCostTotal_11);
 
-                    ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円`;
+                    // SBI
+                    let sbiRatioText = "";
+                    if (sStock !== "外" && sStock.trim() !== "") {
+                        const costRateSbi = (myCostTotal_sbi39 / yutaiVal * 100).toFixed(2);
+                        const netProfitSbi = Math.floor(yutaiVal - myCostTotal_sbi39);
+                        sbiRatioText = ` [S]コ${costRateSbi}% 利${yieldRate}% 利${netProfitSbi}円`;
+                    }
+
+                    ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円${sbiRatioText}`;
                 }
 
                 const daysHtml = `<span class="days-text">${daysStr}日</span>`;
@@ -379,7 +389,6 @@ async function loadAndMergeAll() {
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
                 const rNewStock = rakutenNewMap[id] !== undefined ? `(${fmt(rakutenNewMap[id])})` : "";
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
-                const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
