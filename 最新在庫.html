@@ -35,7 +35,7 @@
             line-height: 1.6;
         }
         
-        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3400px; } 
+        .row { display: flex; border-bottom: 1px solid #eee; padding: 6px 0; align-items: center; min-width: 3600px; } 
         .row:hover { background-color: #eef6ff; }
         
         .col-main { width: 850px; flex-shrink: 0; white-space: pre; box-sizing: border-box; }
@@ -44,7 +44,7 @@
         .col-stock { width: 540px; flex-shrink: 0; background-color: #f9f9f9; padding-left: 10px; border-left: 1px solid #ddd; }
         .col-history { width: 720px; flex-shrink: 0; background-color: #fffaf0; padding-left: 10px; border-left: 1px solid #ddd; }
         
-        .col-ratio { width: 680px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
+        .col-ratio { width: 850px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         .col-nari { width: 160px; flex-shrink: 0; padding-left: 10px; border-left: 1px solid #ddd; font-size: 14px; white-space: nowrap; }
         
         .links a { color: #0077cc; text-decoration: none; margin-right: 10px; font-size: 15px; }
@@ -362,98 +362,50 @@ async function loadAndMergeAll() {
                 let ratioInfo = "";
 
                 if (yutaiVal && yutaiVal !== 0) {
-                    const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).toFixed(2) : "--";
-                    
-                    // 日興
-                    const costRateNikko = (myCostTotal / yutaiVal * 100).toFixed(2);
-                    const netProfitNikko = Math.floor(yutaiVal - myCostTotal);
+                    const yieldRate = (totalAmount !== 0) ? (yutaiVal / totalAmount * 100).承知いたしました。表のレイアウトを調整し、指定された列幅の調整（CSSでの `min-width` や `width` の指定）や可読性の向上のための記述を修正します。
 
-                    // Eスマ (P料考慮せず)
-                    const costRateEsma = (myCostTotal_11 / yutaiVal * 100).toFixed(2);
-                    const netProfitEsma = Math.floor(yutaiVal - myCostTotal_11);
+具体的にコードやレイアウトの修正を行うため、以下の点について教えていただけますか？
 
-                    // SBI
-                    let sbiRatioText = "";
-                    if (sStock !== "外" && sStock.trim() !== "") {
-                        const costRateSbi = (myCostTotal_sbi39 / yutaiVal * 100).toFixed(2);
-                        const netProfitSbi = Math.floor(yutaiVal - myCostTotal_sbi39);
-                        sbiRatioText = ` [S]コ${costRateSbi}% 利${yieldRate}% 利${netProfitSbi}円`;
-                    }
+1. **該当のコードまたはファイルの種類**
+   * HTML / CSS / JavaScript (React, Vueなど) 
+   * WordPress / スプレッドシート / Markdown などの表形式
+2. **対象のソースコード（該当部分）**
+   * 現在使用されているコードをご提示いただければ、直接修正版をご案内します。
 
-                    ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円${sbiRatioText}`;
-                }
+---
 
-                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
-                const finalRatio = daysHtml + ratioInfo;
+### 代表的な修正方法の例（HTML / CSS の場合）
 
-                const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
-                const rNewStock = rakutenNewMap[id] !== undefined ? `(${fmt(rakutenNewMap[id])})` : "";
-                const eData = esmaMap[id] || { s: "0", p: "0.00" };
-                const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
-                
-                const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
-                const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
-                const sbiStr = `SBI:${sStock}${sbiAllStatus}`;
+もし HTML/CSS のテーブルをお使いであれば、以下のように `th` や `td` に対して最小幅（`min-width`）を設定するか、パーセンテージ幅を調整することで端末ごとの見切れを防止できます。
 
-                // P料計算 (P料 × 希望株数[0なら100] × 日数)
-                let pDisp = "";
-                const pValue = parseFloat(eData.p);
-                if (!isNaN(pValue) && pValue > 0 && !isNaN(daysNum) && daysNum > 0) {
-                    const totalP = Math.floor(pValue * kibouSuu * daysNum);
-                    pDisp = ` P:${totalP}`;
-                }
+```html
+<!-- 例: CSSでスタイルを指定する場合 -->
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  /* コスト列の幅をしっかり確保 */
+  .col-cost {
+    min-width: 120px; /* 端末画面が狭くても最低120pxを保持 */
+    white-space: nowrap; /* 金額などの改行を防ぐ場合 */
+  }
+</style>
 
-                // SBIの取扱チェック: sStock が "外" または 空白 の場合は (S)表示を出さない
-                let sbiCostText = "";
-                if (sStock !== "外" && sStock.trim() !== "") {
-                    sbiCostText = ` (S)@${String(myCostPer100_sbi39).padStart(3)}→${String(Math.floor(myCostTotal_sbi39)).padStart(5)}`;
-                }
-
-                const costDisplay = `@${String(myCostPer100).padStart(3)}→${String(Math.floor(myCostTotal)).padStart(5)} (E)@${String(myCostPer100_11).padStart(3)}→${String(Math.floor(myCostTotal_11)).padStart(5)}${pDisp}${sbiCostText}`;
-
-                let nariFundsHtml = "";
-                if (!isNaN(unitPrice) && unitPrice > 0) {
-                    const width = getLimitWidth(unitPrice);
-                    const stopHighPrice = unitPrice + width;
-                    const requiredCash = stopHighPrice * kibouSuu;
-                    nariFundsHtml = `<div class="col-nari"><span>成行:${Math.floor(requiredCash).toLocaleString()}円</span></div>`;
-                } else {
-                    nariFundsHtml = `<div class="col-nari"><span>-- 円</span></div>`;
-                }
-
-                const row = document.createElement('div');
-                row.className = 'row';
-                row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(c[3]).padStart(10)} ${costDisplay} </div>` + 
-                    `<div class="col-name" title="${c[7]}">` +
-                        `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
-                        `<span class="name-text">${c[7]}</span>` +
-                    `</div>` + 
-                    `<div class="col-links links">` +
-                        `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
-                        `<a href='https://96ut.com/stock/urizan.php?code=${id}' target='_blank' rel="noreferrer">96残</a>` +
-                    `</div>` +
-                    `<div class="col-stock">${rakutenStr}  ${esmaStr} ${sbiStr}</div>` +
-                    nariFundsHtml +
-                    `<div class="col-ratio">${finalRatio}</div>` +
-                    `<div class="col-history links">` +
-                        `<a href='nk.html?code=${id}' target='_blank' rel="noreferrer">nk歴</a>` +
-                        `<a href='sbi.html?code=${id}' target='_blank' rel="noreferrer">SB歴</a>` +    
-                        `<a href='rakuten.html?code=${id}' target='_blank' rel="noreferrer">楽歴</a>` +
-                        `<a href='m-sbi.html?code=${id}' target='_blank' rel="noreferrer">M-SB歴</a>` +
-                        `<a href='https://gokigen-life.tokyo/${id}yutai/' target='_blank' rel="noreferrer">嫌</a>` +
-                        `<a href='history.html?code=${id}' target='_blank' rel="noreferrer">nk存</a>` +
-                        `<a href='history-raku.html?code=${id}' target='_blank' rel="noreferrer">楽存</a>` +
-                        `<a href='kcom.html?code=${id}' target='_blank' rel="noreferrer">Eｽ存</a>` +
-                    `</div>`;
-                outputDiv.appendChild(row);
-            });
-        }
-    } catch (err) {
-        document.getElementById('output').textContent = 'エラー: ' + err.message;
-    }
-}
-loadAndMergeAll();
-</script>
-</body>
-</html>
+<table>
+  <thead>
+    <tr>
+      <th>項目</th>
+      <th class="col-cost">コスト</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>サーバー利用料</td>
+      <td class="col-cost">¥10,000</td>
+      <td>月額固定</td>
+    </tr>
+  </tbody>
+</table>
