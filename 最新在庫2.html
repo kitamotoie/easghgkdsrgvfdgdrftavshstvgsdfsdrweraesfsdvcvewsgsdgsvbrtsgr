@@ -235,7 +235,6 @@ async function loadAndMergeAll() {
             });
         }
 
-        // 最新日興のみ.csv のデータをマップ化
         const nikkoMap = {};
         if (textNikko) {
             textNikko.split(/\r?\n/).forEach(line => {
@@ -321,13 +320,14 @@ async function loadAndMergeAll() {
                 if (!id) return;
                 if (c.length < 3) return; 
 
-                // 日数や価格などの情報はベースおよび最新日興のみ、あるいはクロスデータに準じる
-                const daysStr = (c[1] && c[1].trim() !== "") ? c[1].trim() : "0";
-                const daysNum = parseFloat(daysStr);
+                // ベース.csvの構成: c[0]=コード, c[1]=希望株数, c[2]=銘柄情報等
+                const kibouSuuStr = (c[1] && c[1].trim() !== "") ? c[1].trim() : "100";
+                const kibouSuu = parseFloat(raw(kibouSuuStr)) || 100;
 
-                // ベース.csvの構成に合わせて各数値を適切に取得
-                const unitPrice = parseFloat(raw(c[1])); // 必要に応じて調整
-                const kibouSuu = 100; // デフォルト株数など
+                // 株価は別途取得するか、従来通りの位置（もしベース.csvに含まれる場合は調整）
+                // ここでは仮に株価が不明な場合のフォールバックまたは適切な数値処理を行います
+                const unitPrice = 0; // 必要に応じて株価データの取得元を設定してください
+                const daysNum = 0;   // 日数
 
                 const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : 0;
                 const yutaiVal = getYutaiValue(c[2]);
@@ -380,7 +380,7 @@ async function loadAndMergeAll() {
                     ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円${sbiRatioText}`;
                 }
 
-                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
+                const daysHtml = `<span class="days-text">0日</span>`;
                 const finalRatio = daysHtml + ratioInfo;
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
@@ -388,8 +388,8 @@ async function loadAndMergeAll() {
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
-                // 日興の在庫表示（最新日興のみ.csvの値を適用）
-                const mainStockStr = `${fmt(nikkoStock).padStart(7)}株 `;
+                // ★ 1列目の株数（日興在庫数）にはカンマを付けない形で出力
+                const mainStockStr = `${String(nikkoStock).padStart(7)}株 `;
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
                 const sbiStr = `SBI:${sStock}${sbiAllStatus}`;
@@ -438,7 +438,7 @@ async function loadAndMergeAll() {
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${mainStockStr} ${fmt(unitPrice).padStart(7)} ${daysStr.padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
+                    `<div class="col-main">${mainStockStr} ${fmt(unitPrice).padStart(7)} ${String(daysNum).padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
                     `<div class="col-name" title="${c[2]}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
                         `<span class="name-text">${c[2]}</span>` +
