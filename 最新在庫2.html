@@ -73,7 +73,7 @@
     </div>
 </header>
 
-<div id="output">読み込み中...</div>
+<div id="output">読み込み中...（96ut.comからデータを取得しています）</div>
 
 <script>
 function getLimitWidth(price) {
@@ -118,16 +118,6 @@ const getYutaiValue = (str) => {
     return m ? parseFloat(m[1]) : null;
 };
 
-// 銘柄詳細テキストから株価（現\XXXX等）を抽出するヘルパー
-const getUnitPrice = (str) => {
-    if (!str) return 0;
-    const m = str.match(/現\\?([0-9,]+)/);
-    if (m) {
-        return parseFloat(m[1].replace(/,/g, '')) || 0;
-    }
-    return 0;
-};
-
 const parseCsvLine = (line) => {
     const result = [];
     let cur = '';
@@ -146,6 +136,47 @@ const parseCsvLine = (line) => {
     result.push(cur.trim().replace(/^"|"$/g, ''));
     return result;
 };
+
+// 96ut.comから株価・日数・コストをCORSプロキシ経由で取得する関数
+async function fetch96UtData(id) {
+    const targetUrl = `https://96ut.com/stock/crosscost.php?code=${id}`;
+    const proxyUrl = `https://api.allorigins.win/get?url=` + encodeURIComponent(targetUrl);
+    
+    try {
+        const res = await fetch(proxyUrl, { cache: 'no-store' });
+        if (!res.ok) return { price: 0, days: 19, cost: 0 };
+        const data = await res.json();
+        const htmlText = data.contents;
+        
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        
+        // 1. 株価取得
+        const priceInput = doc.querySelector('input[name="kabuka"]');
+        const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+        
+        // 2. 金利日数取得
+        const nissuuInput = doc.querySelector('input[name="nissuu"]');
+        const days = nissuuInput ? parseFloat(nissuuInput.value) || 19 : 19;
+        
+        // 3. 日興コスト取得
+        let cost = 0;
+        const ths = doc.querySelectorAll('th');
+        ths.forEach(th => {
+            if (th.textContent.includes('日興')) {
+                const td = th.nextElementSibling;
+                if (td) {
+                    const clean = td.textContent.replace('円', '').replace(/,/g, '').trim();
+                    cost = parseFloat(clean) || 0;
+                }
+            }
+        });
+        
+        return { price, days, cost };
+    } catch (e) {
+        return { price: 0, days: 19, cost: 0 };
+    }
+}
 
 async function loadAndMergeAll() {
     try {
@@ -315,28 +346,31 @@ async function loadAndMergeAll() {
         if (textBase) {
             const outputDiv = document.getElementById('output');
             outputDiv.innerHTML = '';
-            textBase.split(/\r?\n/).forEach(line => {
-                if (!line.trim()) return;
+            
+            const lines = textBase.split(/\r?\n/).filter(l => l.trim() !== "");
+            
+            // 各行を順番に処理（または並行処理）
+            for (let line of lines) {
                 const c = parseCsvLine(line);
                 
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
                     if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
-                    return; 
+                    continue; 
                 }
 
                 const id = getID(c[0]);
-                if (!id) return;
-                if (c.length < 3) return; 
+                if (!id) continue;
+                if (c.length < 3) continue; 
 
-                // ベース.csvの構成: c[0]=コード, c[1]=希望株数, c[2]=銘柄情報等
                 const kibouSuuStr = (c[1] && c[1].trim() !== "") ? c[1].trim() : "100";
                 const kibouSuu = parseFloat(raw(kibouSuuStr)) || 100;
 
-                // 株価は詳細テキスト(c[2])等から取得、または必要に応じて設定
-                const unitPrice = getUnitPrice(c[2]);
-                const daysNum = 19; // 必要に応じた金利日数（デフォルト等）
+                // 96ut.comから株価と日数を取得
+                const stockData = await fetch96UtData(id);
+                const unitPrice = stockData.price;
+                const daysNum = stockData.days;
 
                 const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : 0;
                 const yutaiVal = getYutaiValue(c[2]);
@@ -397,7 +431,6 @@ async function loadAndMergeAll() {
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
-                // 1列目の株数（日興在庫数）にはカンマを付けない
                 const mainStockStr = `${String(nikkoStock).padStart(7)}株 `;
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
@@ -471,7 +504,7 @@ async function loadAndMergeAll() {
                     `</div>` +
                     extraHtml;
                 outputDiv.appendChild(row);
-            });
+            }
         }
     } catch (err) {
         document.getElementById('output').textContent = 'エラー: ' + err.message;
