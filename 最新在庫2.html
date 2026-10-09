@@ -118,6 +118,16 @@ const getYutaiValue = (str) => {
     return m ? parseFloat(m[1]) : null;
 };
 
+// 銘柄詳細テキストから株価（現\XXXX等）を抽出するヘルパー
+const getUnitPrice = (str) => {
+    if (!str) return 0;
+    const m = str.match(/現\\?([0-9,]+)/);
+    if (m) {
+        return parseFloat(m[1].replace(/,/g, '')) || 0;
+    }
+    return 0;
+};
+
 const parseCsvLine = (line) => {
     const result = [];
     let cur = '';
@@ -324,10 +334,9 @@ async function loadAndMergeAll() {
                 const kibouSuuStr = (c[1] && c[1].trim() !== "") ? c[1].trim() : "100";
                 const kibouSuu = parseFloat(raw(kibouSuuStr)) || 100;
 
-                // 株価は別途取得するか、従来通りの位置（もしベース.csvに含まれる場合は調整）
-                // ここでは仮に株価が不明な場合のフォールバックまたは適切な数値処理を行います
-                const unitPrice = 0; // 必要に応じて株価データの取得元を設定してください
-                const daysNum = 0;   // 日数
+                // 株価は詳細テキスト(c[2])等から取得、または必要に応じて設定
+                const unitPrice = getUnitPrice(c[2]);
+                const daysNum = 19; // 必要に応じた金利日数（デフォルト等）
 
                 const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : 0;
                 const yutaiVal = getYutaiValue(c[2]);
@@ -380,7 +389,7 @@ async function loadAndMergeAll() {
                     ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円${sbiRatioText}`;
                 }
 
-                const daysHtml = `<span class="days-text">0日</span>`;
+                const daysHtml = `<span class="days-text">${daysNum}日</span>`;
                 const finalRatio = daysHtml + ratioInfo;
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
@@ -388,7 +397,7 @@ async function loadAndMergeAll() {
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
-                // ★ 1列目の株数（日興在庫数）にはカンマを付けない形で出力
+                // 1列目の株数（日興在庫数）にはカンマを付けない
                 const mainStockStr = `${String(nikkoStock).padStart(7)}株 `;
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
