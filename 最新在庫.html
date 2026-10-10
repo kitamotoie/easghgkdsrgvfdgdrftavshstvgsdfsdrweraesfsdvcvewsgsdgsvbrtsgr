@@ -65,11 +65,12 @@
         <a href="https://gokigen-life.tokyo/calendar/" target="_blank" rel="noreferrer">ごき</a>
     </div>
     <div class="update-info">
-        <span id="time-my">自分: 不明</span>
+        <span id="time-nikko">日興: 不明</span>
         <span id="time-rakuten">楽天: 不明</span>
         <span id="time-esma">Eスマ: 不明</span>
         <span id="time-sbi">SBI: 不明</span>
         <span id="time-sbi-all">SBI全体: 不明</span>
+        <span id="time-base">ベース: 不明</span>
     </div>
 </header>
 
@@ -240,13 +241,16 @@ async function loadAndMergeAll() {
             textNikko.split(/\r?\n/).forEach(line => {
                 if (!line.trim()) return;
                 const c = parseCsvLine(line);
-                const id = getID(c[0]);
-                if (!id) return;
-                if (id === "ZZZZ") {
-                    const timeVal = c[1] ? c[1].trim() : "";
-                    if (timeVal) document.getElementById('time-my').textContent = `自分(日興): ${timeVal}`;
+                
+                const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
+                if (zIndex !== -1) {
+                    const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
+                    if (timeVal) document.getElementById('time-nikko').textContent = `日興: ${timeVal}`;
                     return;
                 }
+
+                const id = getID(c[0]);
+                if (!id) return;
                 nikkoMap[id] = c[1] ? c[1].trim() : "0";
             });
         }
@@ -312,7 +316,7 @@ async function loadAndMergeAll() {
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
-                    if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
+                    if (timeVal) document.getElementById('time-base').textContent = `ベース: ${timeVal}`;
                     return; 
                 }
 
@@ -386,7 +390,6 @@ async function loadAndMergeAll() {
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
-                // 1列目の日興在庫数（最新日興のみ.csvより、カンマなし）
                 const cleanNikkoStock = String(nikkoStock).replace(/,/g, '');
                 const mainStockStr = `${cleanNikkoStock.padStart(7)}株 `;
                 
