@@ -73,7 +73,7 @@
     </div>
 </header>
 
-<div id="output">読み込み中...（96ut.comからデータを取得しています）</div>
+<div id="output">読み込み中...</div>
 
 <script>
 function getLimitWidth(price) {
@@ -136,47 +136,6 @@ const parseCsvLine = (line) => {
     result.push(cur.trim().replace(/^"|"$/g, ''));
     return result;
 };
-
-// 96ut.comから株価・日数・コストをCORSプロキシ経由で取得する関数
-async function fetch96UtData(id) {
-    const targetUrl = `https://96ut.com/stock/crosscost.php?code=${id}`;
-    const proxyUrl = `https://api.allorigins.win/get?url=` + encodeURIComponent(targetUrl);
-    
-    try {
-        const res = await fetch(proxyUrl, { cache: 'no-store' });
-        if (!res.ok) return { price: 0, days: 19, cost: 0 };
-        const data = await res.json();
-        const htmlText = data.contents;
-        
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlText, 'text/html');
-        
-        // 1. 株価取得
-        const priceInput = doc.querySelector('input[name="kabuka"]');
-        const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
-        
-        // 2. 金利日数取得
-        const nissuuInput = doc.querySelector('input[name="nissuu"]');
-        const days = nissuuInput ? parseFloat(nissuuInput.value) || 19 : 19;
-        
-        // 3. 日興コスト取得
-        let cost = 0;
-        const ths = doc.querySelectorAll('th');
-        ths.forEach(th => {
-            if (th.textContent.includes('日興')) {
-                const td = th.nextElementSibling;
-                if (td) {
-                    const clean = td.textContent.replace('円', '').replace(/,/g, '').trim();
-                    cost = parseFloat(clean) || 0;
-                }
-            }
-        });
-        
-        return { price, days, cost };
-    } catch (e) {
-        return { price: 0, days: 19, cost: 0 };
-    }
-}
 
 async function loadAndMergeAll() {
     try {
@@ -346,34 +305,30 @@ async function loadAndMergeAll() {
         if (textBase) {
             const outputDiv = document.getElementById('output');
             outputDiv.innerHTML = '';
-            
-            const lines = textBase.split(/\r?\n/).filter(l => l.trim() !== "");
-            
-            // 各行を順番に処理（または並行処理）
-            for (let line of lines) {
+            textBase.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
                 const c = parseCsvLine(line);
                 
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
                     const timeVal = c[zIndex + 1] ? c[zIndex + 1].trim() : "";
                     if (timeVal) document.getElementById('time-my').textContent = `自分: ${timeVal}`;
-                    continue; 
+                    return; 
                 }
 
                 const id = getID(c[0]);
-                if (!id) continue;
-                if (c.length < 3) continue; 
+                if (!id) return;
+                if (c.length < 3) return; 
 
-                const kibouSuuStr = (c[1] && c[1].trim() !== "") ? c[1].trim() : "100";
-                const kibouSuu = parseFloat(raw(kibouSuuStr)) || 100;
-
-                // 96ut.comから株価と日数を取得
-                const stockData = await fetch96UtData(id);
-                const unitPrice = stockData.price;
-                const daysNum = stockData.days;
+                // ベース.csvの構成: c[0]=コード, c[1]=希望株数, c[2]=銘柄情報, c[3]=株価, c[4]=日数
+                const kibouSuu = parseFloat(raw(c[1])) || 100;
+                const nameInfo = c[2] || "";
+                const unitPrice = parseFloat(raw(c[3])) || 0;
+                const daysNum = parseFloat(raw(c[4])) || 19;
+                const daysStr = String(daysNum);
 
                 const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : 0;
-                const yutaiVal = getYutaiValue(c[2]);
+                const yutaiVal = getYutaiValue(nameInfo);
 
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
@@ -423,7 +378,7 @@ async function loadAndMergeAll() {
                     ratioInfo = `コ${costRateNikko}% 利${yieldRate}% 利${netProfitNikko}円 [E]コ${costRateEsma}% 利${yieldRate}% 利${netProfitEsma}円${sbiRatioText}`;
                 }
 
-                const daysHtml = `<span class="days-text">${daysNum}日</span>`;
+                const daysHtml = `<span class="days-text">${daysStr}日</span>`;
                 const finalRatio = daysHtml + ratioInfo;
 
                 const rStock = rakutenMap[id] !== undefined ? rakutenMap[id] : "0";
@@ -431,7 +386,10 @@ async function loadAndMergeAll() {
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
                 
-                const mainStockStr = `${String(nikkoStock).padStart(7)}株 `;
+                // 1列目の日興在庫数（最新日興のみ.csvより、カンマなし）
+                const cleanNikkoStock = String(nikkoStock).replace(/,/g, '');
+                const mainStockStr = `${cleanNikkoStock.padStart(7)}株 `;
+                
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
                 const sbiStr = `SBI:${sStock}${sbiAllStatus}`;
@@ -480,10 +438,10 @@ async function loadAndMergeAll() {
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${mainStockStr} ${fmt(unitPrice).padStart(7)} ${String(daysNum).padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
-                    `<div class="col-name" title="${c[2]}">` +
+                    `<div class="col-main">${mainStockStr} ${fmt(unitPrice).padStart(7)} ${daysStr.padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
+                    `<div class="col-name" title="${nameInfo}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
-                        `<span class="name-text">${c[2]}</span>` +
+                        `<span class="name-text">${nameInfo}</span>` +
                     `</div>` + 
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
@@ -504,7 +462,7 @@ async function loadAndMergeAll() {
                     `</div>` +
                     extraHtml;
                 outputDiv.appendChild(row);
-            }
+            });
         }
     } catch (err) {
         document.getElementById('output').textContent = 'エラー: ' + err.message;
