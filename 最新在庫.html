@@ -60,7 +60,7 @@
 <header>
     <div>
         <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%B2_cross_check.html" target="_blank" rel="noreferrer">ひチェック</a>
-        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%BE_cross_check.html" target="_blank" rel="noreferrer">まチェック</a>
+        <a href="https://kitamotoie.github.io/easghgkdsrgvfdgdrftavshstvgsdfsdrweraesfsdvcvewsgsdgsvbrtsgr/%E3%81%be_cross_check.html" target="_blank" rel="noreferrer">まチェック</a>
         <a href="https://piyoch.com/news/" target="_blank" rel="noreferrer">ぴよ</a>
         <a href="https://gokigen-life.tokyo/calendar/" target="_blank" rel="noreferrer">ごき</a>
     </div>
@@ -142,10 +142,11 @@ async function loadAndMergeAll() {
         const ts = new Date().getTime();
         const fetchOpt = { cache: 'no-store' };
 
-        const [resR, resE, resM, resS, resSAll, resRNew] = await Promise.all([
+        const [resR, resE, resBase, resNikko, resS, resSAll, resRNew] = await Promise.all([
             fetch('楽天定時在庫.CSV?' + ts, fetchOpt),
             fetch('MarginBrand.csv?' + ts, fetchOpt),
-            fetch('最新在庫_data.csv?' + ts, fetchOpt),
+            fetch('ベース.csv?' + ts, fetchOpt),
+            fetch('最新日興のみ.csv?' + ts, fetchOpt),
             fetch('最新在庫SBI.CSV?' + ts, fetchOpt),
             fetch('%E6%9C%80%E6%96%B0%E5%9C%A8%E5%BA%ABSBI%E5%85%A8%E4%BD%93.CSV?' + ts, fetchOpt),
             fetch('%E6%A5%BD%E5%A4%A9%E6%9C%80%E6%96%B0.CSV?' + ts, fetchOpt)
@@ -153,7 +154,8 @@ async function loadAndMergeAll() {
 
         const textR = resR.ok ? new TextDecoder('shift-jis').decode(await resR.arrayBuffer()) : "";
         const textE = resE.ok ? new TextDecoder('shift-jis').decode(await resE.arrayBuffer()) : "";
-        const textMy = resM.ok ? await resM.text() : "";
+        const textBase = resBase.ok ? await resBase.text() : "";
+        const textNikko = resNikko.ok ? await resNikko.text() : "";
         const textS = resS.ok ? new TextDecoder('shift-jis').decode(await resS.arrayBuffer()) : "";
         const textSAll = resSAll.ok ? new TextDecoder('shift-jis').decode(await resSAll.arrayBuffer()) : "";
         const textRNew = resRNew.ok ? new TextDecoder('shift-jis').decode(await resRNew.arrayBuffer()) : "";
@@ -233,6 +235,22 @@ async function loadAndMergeAll() {
             });
         }
 
+        const nikkoMap = {};
+        if (textNikko) {
+            textNikko.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const c = parseCsvLine(line);
+                const id = getID(c[0]);
+                if (!id) return;
+                if (id === "ZZZZ") {
+                    const timeVal = c[1] ? c[1].trim() : "";
+                    if (timeVal) document.getElementById('time-my').textContent = `自分(日興): ${timeVal}`;
+                    return;
+                }
+                nikkoMap[id] = c[1] ? c[1].trim() : "0";
+            });
+        }
+
         const esmaMap = {};
         const linesE = textE.split(/\r?\n/);
         
@@ -284,11 +302,12 @@ async function loadAndMergeAll() {
             esmaMap[id] = { s: stock, p: premium };
         });
 
-        if (textMy) {
+        if (textBase) {
             const outputDiv = document.getElementById('output');
             outputDiv.innerHTML = '';
-            textMy.split(/\r?\n/).forEach(line => {
-                const c = line.split(',');
+            textBase.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const c = parseCsvLine(line);
                 
                 const zIndex = c.findIndex(item => item && item.trim() === "ZZZZ");
                 if (zIndex !== -1) {
@@ -297,21 +316,19 @@ async function loadAndMergeAll() {
                     return; 
                 }
 
-                const id = getID(c[6]);
+                const id = getID(c[0]);
                 if (!id) return;
-                if (c.length < 8) return; 
+                if (c.length < 3) return; 
 
-                const daysStr = (c[8] && c[8].trim() !== "") ? c[8].trim() : "0";
-                const daysNum = parseFloat(daysStr);
+                // ベース.csvの構成: c[0]=コード, c[1]=希望株数, c[2]=銘柄情報, c[3]=株価, c[4]=日数
+                const kibouSuu = parseFloat(raw(c[1])) || 100;
+                const nameInfo = c[2] || "";
+                const unitPrice = parseFloat(raw(c[3])) || 0;
+                const daysNum = parseFloat(raw(c[4])) || 19;
+                const daysStr = String(daysNum);
 
-                const unitPrice = parseFloat(raw(c[1]));
-
-                const rawKibouSuu = parseFloat(raw(c[2]));
-                const kibouSuu = (!isNaN(rawKibouSuu) && rawKibouSuu > 0) ? rawKibouSuu : 100;
-
-                const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : parseFloat(raw(c[3]));
-
-                const yutaiVal = getYutaiValue(c[7]);
+                const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : 0;
+                const yutaiVal = getYutaiValue(nameInfo);
 
                 let myCostTotal = 0;
                 let myCostPer100 = 0;
@@ -338,6 +355,7 @@ async function loadAndMergeAll() {
                 }
 
                 const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
+                const nikkoStock = nikkoMap[id] !== undefined ? nikkoMap[id] : "0";
 
                 let ratioInfo = "";
 
@@ -367,6 +385,10 @@ async function loadAndMergeAll() {
                 const rNewStock = rakutenNewMap[id] !== undefined ? `(${fmt(rakutenNewMap[id])})` : "";
                 const eData = esmaMap[id] || { s: "0", p: "0.00" };
                 const sbiAllStatus = sbiAllMap[id] ? `(${sbiAllMap[id]})` : "";
+                
+                // 1列目の日興在庫数（最新日興のみ.csvより、カンマなし）
+                const cleanNikkoStock = String(nikkoStock).replace(/,/g, '');
+                const mainStockStr = `${cleanNikkoStock.padStart(7)}株 `;
                 
                 const rakutenStr = `楽:${fmt(rStock).padStart(7)}${rNewStock}`;
                 const esmaStr = `E:${fmt(eData.s).padStart(7)} P:${eData.p.padStart(5)}`;
@@ -416,10 +438,10 @@ async function loadAndMergeAll() {
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${c[0].padStart(7)}株 ${fmt(c[1]).padStart(7)} ${c[2].padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
-                    `<div class="col-name" title="${c[7]}">` +
+                    `<div class="col-main">${mainStockStr} ${fmt(unitPrice).padStart(7)} ${daysStr.padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
+                    `<div class="col-name" title="${nameInfo}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
-                        `<span class="name-text">${c[7]}</span>` +
+                        `<span class="name-text">${nameInfo}</span>` +
                     `</div>` + 
                     `<div class="col-links links">` +
                         `<a href='https://96ut.com/stock/crosscost.php?code=${id}' target='_blank' rel="noreferrer">96ｺｽﾄ</a>` +
