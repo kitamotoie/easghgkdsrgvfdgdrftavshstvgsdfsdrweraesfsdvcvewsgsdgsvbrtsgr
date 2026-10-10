@@ -324,14 +324,17 @@ async function loadAndMergeAll() {
                 if (!id) return;
                 if (c.length < 3) return; 
 
-                // ベース.csvの構成: c[0]=コード, c[1]=希望株数, c[2]=銘柄情報, c[3]=株価, c[4]=日数
-                const kibouSuu = parseFloat(raw(c[1])) || 100;
+                // ベース.csvの構成: c[0]=コード, c[1]=希望株数(表示用), c[2]=銘柄情報, c[3]=株価, c[4]=日数
+                const kibouSuuRaw = parseFloat(raw(c[1])) || 0;
+                // 計算用：希望数が0以下の場合は100株として扱う
+                const kibouSuuForCalc = (kibouSuuRaw > 0) ? kibouSuuRaw : 100;
+
                 const nameInfo = c[2] || "";
                 const unitPrice = parseFloat(raw(c[3])) || 0;
                 const daysNum = parseFloat(raw(c[4])) || 19;
                 const daysStr = String(daysNum);
 
-                const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuu : 0;
+                const totalAmount = (!isNaN(unitPrice) && unitPrice > 0) ? unitPrice * kibouSuuForCalc : 0;
                 const yutaiVal = getYutaiValue(nameInfo);
 
                 let myCostTotal = 0;
@@ -347,15 +350,15 @@ async function loadAndMergeAll() {
                     
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
                     myCostPer100 = buy100 + sell100;
-                    myCostTotal = myCostPer100 * (kibouSuu / 100);
+                    myCostTotal = myCostPer100 * (kibouSuuForCalc / 100);
 
                     const sell100_11 = Math.floor(price100 * 0.0110 * daysNum / 365);
                     myCostPer100_11 = sell100_11;
-                    myCostTotal_11 = myCostPer100_11 * (kibouSuu / 100);
+                    myCostTotal_11 = myCostPer100_11 * (kibouSuuForCalc / 100);
 
                     const sell100_sbi39 = Math.floor(price100 * 0.0390 * daysNum / 365);
                     myCostPer100_sbi39 = sell100_sbi39;
-                    myCostTotal_sbi39 = myCostPer100_sbi39 * (kibouSuu / 100);
+                    myCostTotal_sbi39 = myCostPer100_sbi39 * (kibouSuuForCalc / 100);
                 }
 
                 const sStock = sbiMap[id] !== undefined ? sbiMap[id] : "";
@@ -400,7 +403,7 @@ async function loadAndMergeAll() {
                 let pDisp = "";
                 const pValue = parseFloat(eData.p);
                 if (!isNaN(pValue) && pValue > 0 && !isNaN(daysNum) && daysNum > 0) {
-                    const totalP = Math.floor(pValue * kibouSuu * daysNum);
+                    const totalP = Math.floor(pValue * kibouSuuForCalc * daysNum);
                     pDisp = ` P:${totalP}`;
                 }
 
@@ -416,7 +419,7 @@ async function loadAndMergeAll() {
                 if (!isNaN(unitPrice) && unitPrice > 0) {
                     const width = getLimitWidth(unitPrice);
                     const stopHighPrice = unitPrice + width;
-                    requiredCash = stopHighPrice * kibouSuu;
+                    requiredCash = stopHighPrice * kibouSuuForCalc;
                     nariFundsHtml = `<div class="col-nari"><span>成行:${Math.floor(requiredCash).toLocaleString()}円</span></div>`;
                 } else {
                     nariFundsHtml = `<div class="col-nari"><span>-- 円</span></div>`;
@@ -438,11 +441,11 @@ async function loadAndMergeAll() {
                     extraHtml = `<div class="col-extra">(成行差)--円 (1.3%)--円 (1.05%)--円 (0.9%)--円 (0.85%)--円 (0.75%)--円</div>`;
                 }
 
-                // ★ col-main の中で、日興在庫・株価・希望数・総額・コスト の順に出力するように修正
+                // ★ 表示には元の希望数（kibouSuuRaw。0なら0）を使用する
                 const row = document.createElement('div');
                 row.className = 'row';
                 row.innerHTML = 
-                    `<div class="col-main">${mainStockStr} ${fmt(unitPrice).padStart(7)} ${String(kibouSuu).padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
+                    `<div class="col-main">${mainStockStr} ${fmt(unitPrice).padStart(7)} ${String(kibouSuuRaw).padStart(5)} ${fmt(totalAmount).padStart(10)} ${costDisplay} </div>` + 
                     `<div class="col-name" title="${nameInfo}">` +
                         `<a href="https://torihikitoriko.com/zaiko-${id}/#toc0c" target="_blank" rel="noreferrer" class="code-link">${id}</a>` +
                         `<span class="name-text">${nameInfo}</span>` +
