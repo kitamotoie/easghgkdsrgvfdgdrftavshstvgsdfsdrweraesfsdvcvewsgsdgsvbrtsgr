@@ -346,7 +346,7 @@ async function loadAndMergeAll() {
 
                 if (!isNaN(unitPrice) && unitPrice > 0 && !isNaN(daysNum)) {
                     const price100 = unitPrice * 100; 
-                    const buy100 = Math.floor(price100 * 0.0354 * 1 / 365);
+                    const buy100 = Math.floor(price100 * 0.0369 * 1 / 365);
                     
                     const sell100 = Math.floor(price100 * 0.0190 * daysNum / 365);
                     myCostPer100 = buy100 + sell100;
